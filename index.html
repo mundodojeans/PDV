@@ -131,6 +131,39 @@
                 </div>
             </div>
 
+            <section id="screen-estoque" class="screen" style="display:none;">
+                <h2>Gestão de Estoque</h2>
+                
+                <div class="card-form" style="background: #2c2c2c; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gold);">
+                    <h3 style="margin-top:0;">Adicionar Novo Produto</h3>
+                    <div class="form-grid-3">
+                        <input type="text" id="prod-nome" placeholder="Nome do Produto">
+                        <input type="text" id="prod-cod" placeholder="Código (Auto ou Manual)">
+                        <input type="number" id="prod-qtd" placeholder="Qtd Inicial">
+                        <input type="number" id="prod-compra" placeholder="Preço Compra (R$)">
+                        <input type="number" id="prod-venda" placeholder="Preço Venda (R$)">
+                        <input type="text" id="prod-desc" placeholder="Descrição">
+                    </div>
+                    <button onclick="adicionarProduto()" style="width: auto; margin-top: 10px;">Salvar Produto</button>
+                    <button onclick="gerarCodigoAuto()" style="width: auto; margin-top: 10px; background: #555; color: white;">Gerar Código Auto</button>
+                </div>
+
+                <h3>Lista de Produtos</h3>
+                <div id="estoque-lista-container">
+                    <table style="width:100%; border-collapse: collapse; color: white;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--gold);">
+                                th align="left">Cód</th>
+                                <th align="left">Nome</th>
+                                <th align="center">Estoque</th>
+                                <th align="right">Preço</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estoque-tabela-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            
             <section id="screen-ponto" class="screen" style="display:none;">
                 <h2>Registro de Ponto</h2>
                 <div class="ponto-card">
@@ -147,16 +180,35 @@
                 </div>
             </section>
 
-            <section id="screen-config" class="screen" style="display:none;">
-                <h2>Minha Loja</h2>
-                <p>Estes dados são usados para cálculo de lucro líquido.</p>
-                <div class="form-grid">
-                    <input type="text" id="conf-loja" placeholder="Nome da Loja">
-                    <input type="text" id="conf-rua" placeholder="Rua">
-                    <input type="number" id="conf-aluguel" placeholder="Aluguel (R$)">
-                    <input type="number" id="conf-luz" placeholder="Luz (R$)">
+            ection id="screen-config" class="screen" style="display:none;">
+                <h2>Minha Loja & Despesas</h2>
+                <p>Mantenha os dados atualizados para o cálculo correto dos lucros.</p>
+                
+                <div class="form-grid-2">
+                    <div class="group">
+                        <h3>Endereço</h3>
+                        <input type="text" id="conf-loja" placeholder="Nome da Loja">
+                        <input type="text" id="conf-rua" placeholder="Rua">
+                        <input type="text" id="conf-numero" placeholder="Número">
+                        <input type="text" id="conf-bairro" placeholder="Bairro">
+                        <input type="text" id="conf-cidade" placeholder="Cidade">
+                        <input type="text" id="conf-cep" placeholder="CEP">
+                    </div>
+
+                    <div class="group">
+                        <h3>Despesas Mensais (R$)</h3>
+                        <label>Água:</label> <input type="number" id="conf-agua">
+                        <label>Luz:</label> <input type="number" id="conf-luz">
+                        <label>Internet:</label> <input type="number" id="conf-internet">
+                        <label>Aluguel:</label> <input type="number" id="conf-aluguel">
+                        <label>Embalagens:</label> <input type="number" id="conf-embalagens">
+                        <label>Funcionários:</label> <input type="number" id="conf-func">
+                        <label>Despesas Gerais:</label> <input type="number" id="conf-gerais">
+                    </div>
                 </div>
-                </section>
+                <button onclick="salvarConfiguracoes()" class="btn-gold" style="margin-top: 20px;">Salvar Alterações</button>
+                <p id="conf-msg"></p>
+            </section>
 
         </main>
     </div>
