@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyQ1qKLygh7FDfIA_-65CP02eCXWjCBuS7d419trOGlChTkLXZ8MkCMYKQJ8AKCupag/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbyH4yeUzeYME_Fo1CWc3Yamf_-8T7tkMwXMswii-f6PV6tNCW6Wfk5yM37KvvWZz00RSw/exec"; 
 
 // Configuração da Geolocalização da Loja (EXEMPLO - ALTERE PARA OS DADOS REAIS)
 const LOJA_LAT = -5.637711; // Latitude de Ceará-Mirim (Exemplo)
