@@ -1,172 +1,147 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mundo do Jeans - PDV</title>
+    <title>PDV - Mundo do Jeans</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
 
-    <section id="login-screen" class="active">
+    <div id="login-screen" class="active-screen">
         <div class="login-box">
             <h1>Mundo do Jeans</h1>
-            <h2>Login</h2>
+            <h2>Acesso ao Sistema</h2>
             <input type="text" id="login-user" placeholder="Usuário">
             <input type="password" id="login-pass" placeholder="Senha">
             <button onclick="fazerLogin()">Entrar</button>
-            <p onclick="mostrarCadastro()">Não tem conta? Cadastre-se</p>
-
-<button class="secondary" onclick="voltarLogin()">Voltar</button>
+            <p id="login-msg"></p>
         </div>
-    </section>
+    </div>
 
-    <section id="register-screen" class="hidden">
-        <div class="login-box">
-            <h2>Novo Usuário</h2>
-            <input type="text" id="reg-user" placeholder="Nome de Usuário">
-            <input type="password" id="reg-pass" placeholder="Senha">
-            <input type="text" id="reg-name" placeholder="Nome Completo">
-            <input type="text" id="reg-cpf" placeholder="CPF">
-            <input type="text" id="reg-tel" placeholder="Telefone">
-            <button onclick="registrarUsuario()">Cadastrar</button>
-            <button class="secondary" onclick="voltarLogin()">Voltar</button>
-        </div>
-    </section>
-
-    <div id="app-container" class="hidden">
+    <div id="app-container" style="display: none;">
+        
         <nav class="sidebar">
-            <div class="logo">MDJ PDV</div>
+            <div class="logo">Mundo do Jeans</div>
+            <div class="user-info">Olá, <span id="display-user"></span></div>
             <ul>
-                <li onclick="navegar('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
-                <li onclick="navegar('vender')"><i class="fas fa-shopping-cart"></i> Vender Agora</li>
-                <li onclick="navegar('estoque')"><i class="fas fa-box"></i> Estoque</li>
-                <li onclick="navegar('ponto')"><i class="fas fa-clock"></i> Folha de Ponto</li>
-                <li onclick="navegar('config')"><i class="fas fa-cog"></i> Minha Loja</li>
+                <li onclick="showScreen('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
+                <li onclick="showScreen('vender')"><i class="fas fa-shopping-cart"></i> Vender Agora</li>
+                <li onclick="showScreen('estoque')"><i class="fas fa-boxes"></i> Estoque</li>
+                <li onclick="showScreen('ponto')"><i class="fas fa-clock"></i> Folha de Ponto</li>
+                <li onclick="showScreen('config')"><i class="fas fa-cog"></i> Minha Loja</li>
                 <li onclick="logout()" class="logout"><i class="fas fa-sign-out-alt"></i> Sair</li>
             </ul>
         </nav>
 
         <main class="content">
             
-            <div id="dashboard" class="page active">
-                <h2>Insights de Vendas</h2>
+            <section id="screen-dashboard" class="screen">
+                <h2>Visão Geral</h2>
                 <div class="kpi-container">
                     <div class="kpi-card">
                         <h3>Vendas Hoje</h3>
-                        <p id="kpi-hoje">R$ 0,00</p>
+                        <p id="kpi-vendas-hoje">R$ 0,00</p>
                     </div>
                     <div class="kpi-card">
                         <h3>Lucro Líquido (Mês)</h3>
-                        <p id="kpi-lucro">R$ 0,00</p>
+                        <p id="kpi-lucro-mes">R$ 0,00</p>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>Top Vendedor</h3>
+                        <p id="kpi-top-vendedor">-</p>
                     </div>
                 </div>
                 <div class="charts-area">
-                    <div class="chart-box">
-                        <canvas id="chartVendasAno"></canvas>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Top 10 Produtos</h3>
-                        <ul id="top-products-list"></ul>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Ranking Funcionários</h3>
-                        <ul id="ranking-funcionarios"></ul>
-                    </div>
+                    <canvas id="chart-vendas-ano"></canvas>
                 </div>
-            </div>
+                <h3>Top 10 Produtos</h3>
+                <ul id="top-produtos-list"></ul>
+            </section>
 
-            <div id="vender" class="page">
-                <h2>Caixa Livre</h2>
-                <div class="pos-layout">
-                    <div class="product-selection">
-                        <input type="text" id="search-prod" placeholder="Buscar produto..." onkeyup="filtrarProdutos()">
-                        <div id="products-grid" class="products-grid">
+            <section id="screen-vender" class="screen" style="display:none;">
+                <h2>Nova Venda</h2>
+                <div class="pdv-layout">
+                    <div class="product-list">
+                        <input type="text" id="search-product" placeholder="Buscar produto (Nome ou Código)..." onkeyup="filtrarProdutos()">
+                        <div id="catalog-container">
                             </div>
                     </div>
                     <div class="cart-panel">
                         <h3>Carrinho</h3>
-                        <ul id="cart-list"></ul>
-                        <div class="cart-total">
-                            <span>Total:</span>
-                            <span id="cart-total-value">R$ 0,00</span>
+                        <ul id="cart-items"></ul>
+                        <div class="cart-summary">
+                            <p>Total: <span id="cart-total">R$ 0,00</span></p>
+                            <button onclick="abrirPagamento()">Finalizar Venda</button>
                         </div>
-                        
-                        <div class="payment-options">
-                            <label>Pagamento:</label>
-                            <select id="pay-method" onchange="verificarPagamento()">
-                                <option value="dinheiro">Espécie</option>
-                                <option value="cartao">Cartão</option>
-                                <option value="pix">Pix</option>
-                                <option value="crediario">Crediário</option>
-                            </select>
-                            
-                            <div id="crediario-fields" class="hidden">
-                                <input type="text" id="cli-cpf" placeholder="CPF Cliente">
-                                <input type="text" id="cli-tel" placeholder="Telefone Cliente">
-                                <input type="number" id="cli-parcelas" placeholder="Nº Parcelas">
-                                <label>Data Limite:</label>
-                                <input type="date" id="cli-limite">
-                            </div>
-
-                            <div id="pix-area" class="hidden" style="text-align: center; margin-top: 10px;">
-                                <p>Gerando QR Code...</p>
-                                <img id="pix-qrcode" src="" style="width: 150px; display: none;">
-                                <p id="pix-copia-cola" style="font-size: 10px; word-break: break-all;"></p>
-                            </div>
-                        </div>
-
-                        <button class="btn-finalizar" onclick="finalizarVenda()">Finalizar Venda</button>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div id="estoque" class="page">
-                <h2>Estoque Atual</h2>
-                <button onclick="carregarProdutos()">Atualizar Lista</button>
-                <table id="stock-table">
-                    <thead>
-                        <tr>
-                            <th>Cód</th>
-                            <th>Nome</th>
-                            <th>Qtd</th>
-                            <th>Preço Venda</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <div id="modal-pagamento" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="fecharModal('modal-pagamento')">&times;</span>
+                    <h3>Pagamento</h3>
+                    <p>Total a Pagar: <span id="modal-total-value"></span></p>
+                    
+                    <label>CPF Cliente (Obrigatório para Crediário/Pix):</label>
+                    <input type="text" id="cli-cpf">
+                    <label>Telefone:</label>
+                    <input type="text" id="cli-tel">
 
-            <div id="ponto" class="page">
-                <h2>Registro de Ponto</h2>
-                <div class="ponto-card">
-                    <p>Usuário: <strong id="ponto-user-display"></strong></p>
-                    <p id="relogio-realtime">00:00:00</p>
-                    <select id="tipo-ponto">
-                        <option value="Check-in">Check-in</option>
-                        <option value="Almoco-ida">Saída para Almoço</option>
-                        <option value="Almoco-volta">Retorno do Almoço</option>
-                        <option value="Check-out">Check-out</option>
+                    <label>Método:</label>
+                    <select id="pagamento-metodo" onchange="checkMetodo()">
+                        <option value="Dinheiro">Dinheiro</option>
+                        <option value="Cartão Débito">Cartão Débito</option>
+                        <option value="Cartão Crédito">Cartão Crédito</option>
+                        <option value="Pix">Pix</option>
+                        <option value="Crediário">Crediário</option>
                     </select>
-                    <input type="password" id="ponto-senha" placeholder="Confirme sua senha">
-                    <button onclick="baterPonto()">Registrar</button>
+
+                    <div id="credito-options" style="display:none;">
+                        <input type="number" id="parcelas" placeholder="Número de Parcelas">
+                        <label>Data Limite:</label>
+                        <input type="date" id="data-limite">
+                    </div>
+
+                    <div id="pix-area" style="display:none; text-align:center;">
+                        <canvas id="qr-pix"></canvas>
+                        <p style="font-size:12px;">Chave: 84991000682 (Luciana Oliveira)</p>
+                    </div>
+
+                    <button onclick="confirmarVenda()" class="btn-gold">Confirmar Venda</button>
                 </div>
             </div>
 
-            <div id="config" class="page">
+            <section id="screen-ponto" class="screen" style="display:none;">
+                <h2>Registro de Ponto</h2>
+                <div class="ponto-card">
+                    <p id="ponto-relogio" style="font-size: 2em; font-weight: bold;"></p>
+                    <select id="ponto-tipo">
+                        <option value="Check-in">Check-in (Entrada)</option>
+                        <option value="Saída Almoço">Saída para Almoço</option>
+                        <option value="Retorno Almoço">Retorno do Almoço</option>
+                        <option value="Check-out">Check-out (Saída)</option>
+                    </select>
+                    <input type="password" id="ponto-senha" placeholder="Confirme sua senha">
+                    <button onclick="registrarPonto()">Registrar</button>
+                    <p id="ponto-msg"></p>
+                </div>
+            </section>
+
+            <section id="screen-config" class="screen" style="display:none;">
                 <h2>Minha Loja</h2>
+                <p>Estes dados são usados para cálculo de lucro líquido.</p>
                 <div class="form-grid">
                     <input type="text" id="conf-loja" placeholder="Nome da Loja">
                     <input type="text" id="conf-rua" placeholder="Rua">
-                    <input type="text" id="conf-cidade" placeholder="Cidade">
-                    <input type="text" id="conf-agua" placeholder="Gasto Água (R$)">
-                    <input type="text" id="conf-luz" placeholder="Gasto Luz (R$)">
-                    <input type="text" id="conf-aluguel" placeholder="Aluguel (R$)">
-                    </div>
-                <button onclick="salvarConfig()">Salvar Alterações</button>
-            </div>
+                    <input type="number" id="conf-aluguel" placeholder="Aluguel (R$)">
+                    <input type="number" id="conf-luz" placeholder="Luz (R$)">
+                </div>
+                </section>
 
         </main>
     </div>
