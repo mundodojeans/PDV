@@ -11,17 +11,32 @@
 </head>
 <body>
 
-    <div id="login-screen" class="active-screen">
+   <div id="login-screen" class="active-screen">
         <div class="login-box">
             <h1>Mundo do Jeans</h1>
-            <h2>Acesso ao sistema</h2>
-            <input type="text" id="login-user" placeholder="Usuário">
-            <input type="password" id="login-pass" placeholder="Senha">
-            <button onclick="fazerLogin()">Entrar</button>
-            <p id="login-msg"></p>
+            
+            <div id="form-login-area">
+                <h2>Acesso ao Sistema</h2>
+                <input type="text" id="login-user" placeholder="Nome de Usuário">
+                <input type="password" id="login-pass" placeholder="Senha">
+                <button onclick="fazerLogin()">Entrar</button>
+                <p class="toggle-link" onclick="toggleRegister()">Não tem conta? Cadastre-se</p>
+            </div>
+
+            <div id="form-register-area" style="display: none;">
+                <h2>Novo Cadastro</h2>
+                <input type="text" id="reg-nome" placeholder="Nome Completo">
+                <input type="text" id="reg-user" placeholder="Crie um Usuário">
+                <input type="password" id="reg-pass" placeholder="Crie uma Senha">
+                <input type="text" id="reg-cpf" placeholder="CPF">
+                <input type="text" id="reg-tel" placeholder="Telefone">
+                <button onclick="registrarNovoUsuario()">Cadastrar</button>
+                <p class="toggle-link" onclick="toggleRegister()">Já tem conta? Fazer Login</p>
+            </div>
+
+            <p id="login-msg" style="margin-top: 10px; min-height: 20px;"></p>
         </div>
     </div>
-
     <div id="app-container" style="display: none;">
         
         <nav class="sidebar">
