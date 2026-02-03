@@ -121,11 +121,7 @@ function logout() {
 }
 
 // === NAVEGAÇÃO ===
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById('screen-' + screenId).style.display = 'block';
-    if(screenId === 'dashboard') carregarDashboard();
-}
+
 
 // === API HELPER ===
 async function callApi(data) {
@@ -367,4 +363,135 @@ function crc16(str) {
         }
     }
     return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
+}
+// === GESTÃO DE ESTOQUE ===
+
+// Função para gerar código automático único
+function gerarCodigoAuto() {
+    const code = "PROD" + Date.now().toString().slice(-5) + Math.floor(Math.random() * 99);
+    document.getElementById('prod-cod').value = code;
+}
+
+async function adicionarProduto() {
+    const nome = document.getElementById('prod-nome').value;
+    const cod = document.getElementById('prod-cod').value;
+    const qtd = document.getElementById('prod-qtd').value;
+    const pCompra = document.getElementById('prod-compra').value;
+    const pVenda = document.getElementById('prod-venda').value;
+    const desc = document.getElementById('prod-desc').value;
+
+    if(!nome || !cod || !pVenda) return alert("Preencha pelo menos Nome, Código e Preço de Venda.");
+
+    const productData = {
+        nome: nome,
+        codigo: cod,
+        qtd: qtd || 0,
+        pCompra: pCompra || 0,
+        pVenda: pVenda,
+        desc: desc
+    };
+
+    if(confirm("Cadastrar produto?")) {
+        const res = await callApi({ action: "add_product", productData: productData });
+        if(res.status === "success") {
+            alert("Produto salvo!");
+            // Limpar campos
+            document.getElementById('prod-nome').value = "";
+            document.getElementById('prod-cod').value = "";
+            document.getElementById('prod-qtd').value = "";
+            document.getElementById('prod-compra').value = "";
+            document.getElementById('prod-venda').value = "";
+            document.getElementById('prod-desc').value = "";
+            
+            // Recarregar lista
+            carregarEstoqueVisual(); 
+            carregarDadosIniciais(); // Recarrega para o PDV também
+        } else {
+            alert("Erro: " + res.message);
+        }
+    }
+}
+
+async function carregarEstoqueVisual() {
+    const res = await callApi({ action: "get_products" });
+    const tbody = document.getElementById('estoque-tabela-body');
+    tbody.innerHTML = "";
+    
+    if(res.status === "success") {
+        res.products.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding:10px; border-bottom:1px solid #444;">${p.codigo}</td>
+                <td style="padding:10px; border-bottom:1px solid #444;">${p.nome}</td>
+                <td style="padding:10px; border-bottom:1px solid #444; text-align:center;">${p.estoque}</td>
+                <td style="padding:10px; border-bottom:1px solid #444; text-align:right;">R$ ${p.preco_revenda}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+// Atualize a função showScreen para carregar o estoque quando abrir a aba
+const oldShowScreen = showScreen; // Guardar referencia se quiser
+showScreen = function(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById('screen-' + screenId).style.display = 'block';
+    
+    if(screenId === 'dashboard') carregarDashboard();
+    if(screenId === 'estoque') carregarEstoqueVisual();
+    if(screenId === 'config') carregarConfiguracoes();
+}
+
+// === MINHA LOJA / CONFIGURAÇÕES ===
+
+async function carregarConfiguracoes() {
+    const res = await callApi({ action: "get_config" });
+    if(res.status === "success" && res.config) {
+        const c = res.config;
+        document.getElementById('conf-loja').value = c.loja;
+        document.getElementById('conf-rua').value = c.rua;
+        document.getElementById('conf-cidade').value = c.cidade;
+        document.getElementById('conf-bairro').value = c.bairro;
+        document.getElementById('conf-numero').value = c.numero;
+        document.getElementById('conf-cep').value = c.cep;
+        
+        document.getElementById('conf-agua').value = c.agua;
+        document.getElementById('conf-luz').value = c.luz;
+        document.getElementById('conf-internet').value = c.internet;
+        document.getElementById('conf-aluguel').value = c.aluguel;
+        document.getElementById('conf-embalagens').value = c.embalagens;
+        document.getElementById('conf-func').value = c.func;
+        document.getElementById('conf-gerais').value = c.gerais;
+    }
+}
+
+async function salvarConfiguracoes() {
+    const configData = {
+        loja: document.getElementById('conf-loja').value,
+        rua: document.getElementById('conf-rua').value,
+        cidade: document.getElementById('conf-cidade').value,
+        bairro: document.getElementById('conf-bairro').value,
+        numero: document.getElementById('conf-numero').value,
+        cep: document.getElementById('conf-cep').value,
+        
+        agua: document.getElementById('conf-agua').value,
+        luz: document.getElementById('conf-luz').value,
+        internet: document.getElementById('conf-internet').value,
+        aluguel: document.getElementById('conf-aluguel').value,
+        embalagens: document.getElementById('conf-embalagens').value,
+        func: document.getElementById('conf-func').value,
+        gerais: document.getElementById('conf-gerais').value
+    };
+
+    const msg = document.getElementById('conf-msg');
+    msg.innerText = "Salvando...";
+    
+    const res = await callApi({ action: "save_config", configData: configData });
+    if(res.status === "success") {
+        msg.innerText = "Dados atualizados com sucesso!";
+        msg.style.color = "lime";
+    } else {
+        msg.innerText = "Erro ao salvar.";
+        msg.style.color = "red";
+    }
 }
