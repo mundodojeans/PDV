@@ -1,3 +1,4 @@
+console.log("O SCRIPT CARREGOU COM SUCESSO!");
 // *** SUBSTITUA PELA SUA URL DO APPS SCRIPT AQUI ***
 const URL_API = "https://script.google.com/macros/s/AKfycbz57Hx0h7jqDKFgWWSMevQK5WvpuYGVQAXnVW87WQpP0N03hvW_ejdOGWDTjoJDX93Ppw/exec";
 
