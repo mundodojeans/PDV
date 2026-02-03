@@ -28,13 +28,35 @@ function navegar(pageId) {
 
 // --- API FETCH HELPER ---
 async function apiCall(action, data = {}) {
-    // Apps Script requer POST com stringify para evitar problemas de CORS em alguns casos, ou URL params no GET
-    // Usaremos POST para quase tudo para enviar JSON body
-    const response = await fetch(URL_API, {
-        method: "POST",
-        body: JSON.stringify({ action: action, ...data })
-    });
-    return await response.json();
+    const payload = { action: action, ...data };
+    
+    // Adicionamos um timestamp no final da URL para evitar cache do navegador
+    const urlComCacheBuster = URL_API + "?t=" + new Date().getTime();
+
+    try {
+        const response = await fetch(urlComCacheBuster, {
+            method: "POST",
+            mode: "no-cors", // Tenta enviar sem restrições de segurança estritas
+            body: JSON.stringify(payload),
+            headers: {
+                "Content-Type": "text/plain"
+            }
+        });
+
+        // Como o modo 'no-cors' não permite ler a resposta por segurança do navegador,
+        // para o LOGIN e BUSCA DE PRODUTOS funcionarem, precisamos do modo 'cors' padrão.
+        // Vamos tentar a abordagem mais compatível abaixo:
+        
+        const responseReal = await fetch(urlComCacheBuster, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        
+        return await responseReal.json();
+    } catch (error) {
+        console.error("Erro na chamada da API:", error);
+        throw error;
+    }
 }
 
 // --- LOGIN & REGISTRO ---
