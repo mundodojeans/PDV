@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwC7iGfE8cSJjNeR17m1EeRESNl11FWjTu4aq4chtSbmXtmqoUgy9q6ROIuD-6Ko4_0Gg/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxG21EGXhGb-hTuCH0ILtTbj0OpKJ6WvZFmnnI-AW7-azFrvJNVqhHyO1a-EHTJXisOuQ/exec"; 
 
 // Configuração da Geolocalização da Loja (EXEMPLO - ALTERE PARA OS DADOS REAIS)
 const LOJA_LAT = -5.637711; // Latitude de Ceará-Mirim (Exemplo)
@@ -18,7 +18,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 1000);
 });
 
-// === LOGIN ===
+// === CADASTRO E LOGIN===
+function toggleRegister() {
+    const loginArea = document.getElementById('form-login-area');
+    const regArea = document.getElementById('form-register-area');
+    const msg = document.getElementById('login-msg');
+    
+    msg.innerText = ""; // Limpa mensagens anteriores
+
+    if (loginArea.style.display === 'none') {
+        loginArea.style.display = 'block';
+        regArea.style.display = 'none';
+    } else {
+        loginArea.style.display = 'none';
+        regArea.style.display = 'block';
+    }
+}
+
 async function fazerLogin() {
     const user = document.getElementById('login-user').value;
     const pass = document.getElementById('login-pass').value;
@@ -44,6 +60,61 @@ async function fazerLogin() {
     }
     btn.disabled = false;
 }
+
+async function registrarNovoUsuario() {
+    const nome = document.getElementById('reg-nome').value;
+    const user = document.getElementById('reg-user').value;
+    const pass = document.getElementById('reg-pass').value;
+    const cpf = document.getElementById('reg-cpf').value;
+    const tel = document.getElementById('reg-tel').value;
+    const msg = document.getElementById('login-msg');
+
+    if (!nome || !user || !pass || !cpf) {
+        msg.innerText = "Preencha todos os campos obrigatórios.";
+        msg.style.color = "orange";
+        return;
+    }
+
+    msg.innerText = "Cadastrando...";
+    msg.style.color = "white";
+
+    const userData = {
+        nome: nome,
+        user: user,
+        pass: pass,
+        cpf: cpf,
+        tel: tel
+    };
+
+    try {
+        const res = await callApi({ action: "register_user", userData: userData });
+        
+        if (res.status === "success") {
+            msg.innerText = "Cadastro realizado! Faça login.";
+            msg.style.color = "lime";
+            
+            // Limpa os campos
+            document.getElementById('reg-nome').value = "";
+            document.getElementById('reg-user').value = "";
+            document.getElementById('reg-pass').value = "";
+            document.getElementById('reg-cpf').value = "";
+            document.getElementById('reg-tel').value = "";
+
+            // Volta para a tela de login após 2 segundos
+            setTimeout(() => {
+                toggleRegister();
+                msg.innerText = "";
+            }, 2000);
+        } else {
+            msg.innerText = res.message;
+            msg.style.color = "red";
+        }
+    } catch (e) {
+        msg.innerText = "Erro ao conectar.";
+        msg.style.color = "red";
+    }
+}
+
 
 function logout() {
     location.reload();
