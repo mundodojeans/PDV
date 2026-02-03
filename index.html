@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mundo do Jeans - PDV</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <section id="login-screen" class="active">
+        <div class="login-box">
+            <h1>Mundo do Jeans</h1>
+            <h2>Login</h2>
+            <input type="text" id="login-user" placeholder="Usuário">
+            <input type="password" id="login-pass" placeholder="Senha">
+            <button onclick="fazerLogin()">Entrar</button>
+            <p onclick="mostrarCadastro()">Não tem conta? Cadastre-se</p>
+        </div>
+    </section>
+
+    <section id="register-screen" class="hidden">
+        <div class="login-box">
+            <h2>Novo Usuário</h2>
+            <input type="text" id="reg-user" placeholder="Nome de Usuário">
+            <input type="password" id="reg-pass" placeholder="Senha">
+            <input type="text" id="reg-name" placeholder="Nome Completo">
+            <input type="text" id="reg-cpf" placeholder="CPF">
+            <input type="text" id="reg-tel" placeholder="Telefone">
+            <button onclick="registrarUsuario()">Cadastrar</button>
+            <button class="secondary" onclick="voltarLogin()">Voltar</button>
+        </div>
+    </section>
+
+    <div id="app-container" class="hidden">
+        <nav class="sidebar">
+            <div class="logo">MDJ PDV</div>
+            <ul>
+                <li onclick="navegar('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
+                <li onclick="navegar('vender')"><i class="fas fa-shopping-cart"></i> Vender Agora</li>
+                <li onclick="navegar('estoque')"><i class="fas fa-box"></i> Estoque</li>
+                <li onclick="navegar('ponto')"><i class="fas fa-clock"></i> Folha de Ponto</li>
+                <li onclick="navegar('config')"><i class="fas fa-cog"></i> Minha Loja</li>
+                <li onclick="logout()" class="logout"><i class="fas fa-sign-out-alt"></i> Sair</li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            
+            <div id="dashboard" class="page active">
+                <h2>Insights de Vendas</h2>
+                <div class="kpi-container">
+                    <div class="kpi-card">
+                        <h3>Vendas Hoje</h3>
+                        <p id="kpi-hoje">R$ 0,00</p>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>Lucro Líquido (Mês)</h3>
+                        <p id="kpi-lucro">R$ 0,00</p>
+                    </div>
+                </div>
+                <div class="charts-area">
+                    <div class="chart-box">
+                        <canvas id="chartVendasAno"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Top 10 Produtos</h3>
+                        <ul id="top-products-list"></ul>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Ranking Funcionários</h3>
+                        <ul id="ranking-funcionarios"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="vender" class="page">
+                <h2>Caixa Livre</h2>
+                <div class="pos-layout">
+                    <div class="product-selection">
+                        <input type="text" id="search-prod" placeholder="Buscar produto..." onkeyup="filtrarProdutos()">
+                        <div id="products-grid" class="products-grid">
+                            </div>
+                    </div>
+                    <div class="cart-panel">
+                        <h3>Carrinho</h3>
+                        <ul id="cart-list"></ul>
+                        <div class="cart-total">
+                            <span>Total:</span>
+                            <span id="cart-total-value">R$ 0,00</span>
+                        </div>
+                        
+                        <div class="payment-options">
+                            <label>Pagamento:</label>
+                            <select id="pay-method" onchange="verificarPagamento()">
+                                <option value="dinheiro">Espécie</option>
+                                <option value="cartao">Cartão</option>
+                                <option value="pix">Pix</option>
+                                <option value="crediario">Crediário</option>
+                            </select>
+                            
+                            <div id="crediario-fields" class="hidden">
+                                <input type="text" id="cli-cpf" placeholder="CPF Cliente">
+                                <input type="text" id="cli-tel" placeholder="Telefone Cliente">
+                                <input type="number" id="cli-parcelas" placeholder="Nº Parcelas">
+                                <label>Data Limite:</label>
+                                <input type="date" id="cli-limite">
+                            </div>
+
+                            <div id="pix-area" class="hidden" style="text-align: center; margin-top: 10px;">
+                                <p>Gerando QR Code...</p>
+                                <img id="pix-qrcode" src="" style="width: 150px; display: none;">
+                                <p id="pix-copia-cola" style="font-size: 10px; word-break: break-all;"></p>
+                            </div>
+                        </div>
+
+                        <button class="btn-finalizar" onclick="finalizarVenda()">Finalizar Venda</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="estoque" class="page">
+                <h2>Estoque Atual</h2>
+                <button onclick="carregarProdutos()">Atualizar Lista</button>
+                <table id="stock-table">
+                    <thead>
+                        <tr>
+                            <th>Cód</th>
+                            <th>Nome</th>
+                            <th>Qtd</th>
+                            <th>Preço Venda</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="ponto" class="page">
+                <h2>Registro de Ponto</h2>
+                <div class="ponto-card">
+                    <p>Usuário: <strong id="ponto-user-display"></strong></p>
+                    <p id="relogio-realtime">00:00:00</p>
+                    <select id="tipo-ponto">
+                        <option value="Check-in">Check-in</option>
+                        <option value="Almoco-ida">Saída para Almoço</option>
+                        <option value="Almoco-volta">Retorno do Almoço</option>
+                        <option value="Check-out">Check-out</option>
+                    </select>
+                    <input type="password" id="ponto-senha" placeholder="Confirme sua senha">
+                    <button onclick="baterPonto()">Registrar</button>
+                </div>
+            </div>
+
+            <div id="config" class="page">
+                <h2>Minha Loja</h2>
+                <div class="form-grid">
+                    <input type="text" id="conf-loja" placeholder="Nome da Loja">
+                    <input type="text" id="conf-rua" placeholder="Rua">
+                    <input type="text" id="conf-cidade" placeholder="Cidade">
+                    <input type="text" id="conf-agua" placeholder="Gasto Água (R$)">
+                    <input type="text" id="conf-luz" placeholder="Gasto Luz (R$)">
+                    <input type="text" id="conf-aluguel" placeholder="Aluguel (R$)">
+                    </div>
+                <button onclick="salvarConfig()">Salvar Alterações</button>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
