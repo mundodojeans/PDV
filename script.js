@@ -121,6 +121,14 @@ function logout() {
 }
 
 // === NAVEGAÇÃO ===
+showScreen = function(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById('screen-' + screenId).style.display = 'block';
+}
+    if(screenId === 'dashboard') carregarDashboard();
+    if(screenId === 'estoque') carregarEstoqueVisual();
+    if(screenId === 'config') carregarConfiguracoes();
+
 
 
 // === API HELPER ===
@@ -429,17 +437,6 @@ async function carregarEstoqueVisual() {
             tbody.appendChild(tr);
         });
     }
-}
-
-// Atualize a função showScreen para carregar o estoque quando abrir a aba
-const oldShowScreen = showScreen; // Guardar referencia se quiser
-showScreen = function(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById('screen-' + screenId).style.display = 'block';
-    
-    if(screenId === 'dashboard') carregarDashboard();
-    if(screenId === 'estoque') carregarEstoqueVisual();
-    if(screenId === 'config') carregarConfiguracoes();
 }
 
 // === MINHA LOJA / CONFIGURAÇÕES ===
