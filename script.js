@@ -1,5 +1,5 @@
 // *** SUBSTITUA PELA SUA URL DO APPS SCRIPT AQUI ***
-const URL_API = "https://script.google.com/macros/s/AKfycbzVWeN7YuYySyZMwjVG8jA12rrh7gRQTEcjdE2ocC_mLkSar_rLd3goGIRbxf9eu5CT_Q/exec";
+const URL_API = "https://script.google.com/macros/s/AKfycbz57Hx0h7jqDKFgWWSMevQK5WvpuYGVQAXnVW87WQpP0N03hvW_ejdOGWDTjoJDX93Ppw/exec";
 
 // *** CONFIGURAÇÃO DE LOCALIZAÇÃO DA LOJA (Ceará-Mirim Exemplo) ***
 const latitudeLoja = -5.637711; // Coloque a latitude real
