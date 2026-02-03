@@ -55,6 +55,17 @@ button {
 
 button:hover {
     background: var(--gold-dark);
+    .toggle-link {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: var(--gold);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.toggle-link:hover {
+    color: var(--white);
+}
 }
 
 /* App Layout */
