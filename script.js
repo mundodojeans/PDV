@@ -15,16 +15,34 @@ function toggleLogin(reg) {
 }
 
 async function fazerLogin() {
-    const res = await call("login", { user: document.getElementById('l-user').value, pass: document.getElementById('l-pass').value });
-    if (res.status === "success") {
-        user = res.userData;
-        document.getElementById('u-nome').innerText = user.nome;
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        show('dashboard');
-    } else alert(res.message);
-}
+    const btn = document.querySelector("#form-login button");
+    const originalText = btn.innerText;
+    
+    btn.innerText = "Verificando...";
+    btn.classList.add("loading");
 
+    try {
+        const res = await call("login", { 
+            user: document.getElementById('l-user').value, 
+            pass: document.getElementById('l-pass').value 
+        });
+
+        if (res.status === "success") {
+            user = res.userData;
+            document.getElementById('u-nome').innerText = user.nome;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app').style.display = 'flex';
+            show('dashboard');
+        } else {
+            alert(res.message);
+        }
+    } catch (e) {
+        alert("Erro na conexão.");
+    } finally {
+        btn.innerText = originalText;
+        btn.classList.remove("loading");
+    }
+}
 function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     document.getElementById('s-' + id).style.display = 'block';
@@ -73,22 +91,51 @@ async function loadPDV() {
     }
 }
 function addCart(cod) {
-    const p = prods.find(x => x[0] == cod);
-    cart.push({ codigo: p[0], nome: p[1], qtd: 1, valorTotal: p[4] });
+    const p = prods.find(x => String(x[0]) === String(cod));
+    if (!p) return;
+
+    // Verifica se o item já está no carrinho
+    const itemExistente = cart.find(item => String(item.codigo) === String(cod));
+
+    if (itemExistente) {
+        // Se já existe, apenas aumenta a quantidade e atualiza o valor total
+        itemExistente.qtd += 1;
+        itemExistente.valorTotal = itemExistente.qtd * parseFloat(p[4]);
+    } else {
+        // Se é novo, adiciona o objeto completo
+        cart.push({
+            codigo: p[0],
+            nome: p[1],
+            qtd: 1,
+            valorUnitario: parseFloat(p[4]),
+            valorTotal: parseFloat(p[4])
+        });
+    }
     renderCart();
 }
-
 function renderCart() {
     const list = document.getElementById('cart-list');
     list.innerHTML = "";
     let t = 0;
+    
     cart.forEach((i, idx) => {
         t += i.valorTotal;
-        list.innerHTML += `<p>${i.nome} - R$ ${i.valorTotal} <button onclick="cart.splice(${idx},1);renderCart()" style="width:auto;padding:2px">x</button></p>`;
+        list.innerHTML += `
+            <div class="cart-item">
+                <div>
+                    <b>${i.nome}</b><br>
+                    <small>${i.qtd}x R$ ${i.valorUnitario.toFixed(2)}</small>
+                </div>
+                <div>
+                    <b>R$ ${i.valorTotal.toFixed(2)}</b>
+                    <button onclick="cart.splice(${idx},1);renderCart()" style="width:auto; background:none; border:none; color:red; margin-left:10px">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`;
     });
     document.getElementById('total').innerText = `R$ ${t.toFixed(2)}`;
 }
-
 function abrirPgto() { document.getElementById('m-pgto').style.display = 'block'; }
 
 function checkPix(v) {
@@ -100,6 +147,14 @@ function checkPix(v) {
 }
 
 async function confirmarVenda() {
+    if (cart.length === 0) return alert("Carrinho vazio!");
+
+    const btn = document.querySelector("#m-pgto button");
+    const originalText = btn.innerText;
+    
+    btn.innerText = "Salvando Venda...";
+    btn.classList.add("loading");
+
     const sale = {
         codigoVenda: "V" + Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
@@ -109,14 +164,23 @@ async function confirmarVenda() {
         cpf: document.getElementById('cli-cpf').value,
         items: cart
     };
-    await call("save_sale", { saleData: sale });
-    alert("Venda Salva!");
-    cart = [];
-    renderCart();
-    document.getElementById('m-pgto').style.display = 'none';
-    show('dashboard');
-}
 
+    try {
+        const res = await call("save_sale", { saleData: sale });
+        if (res.status === "success") {
+            alert("Venda finalizada com sucesso!");
+            cart = [];
+            renderCart();
+            document.getElementById('m-pgto').style.display = 'none';
+            show('dashboard');
+        }
+    } catch (e) {
+        alert("Erro ao salvar venda.");
+    } finally {
+        btn.innerText = originalText;
+        btn.classList.remove("loading");
+    }
+}
 // DASHBOARD
 async function loadDash() {
     const res = await call("get_dashboard");
