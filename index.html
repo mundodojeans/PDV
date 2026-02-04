@@ -3,214 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDV - Mundo do Jeans</title>
+    <title>PDV Mundo do Jeans</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
-
-   <div id="login-screen" class="active-screen">
+    <div id="login-screen">
         <div class="login-box">
             <h1>Mundo do Jeans</h1>
-            
-            <div id="form-login-area">
-                <h2>Acesso ao Sistema</h2>
-                <input type="text" id="login-user" placeholder="Nome de Usuário">
-                <input type="password" id="login-pass" placeholder="Senha">
+            <div id="form-login">
+                <input type="text" id="l-user" placeholder="Usuário">
+                <input type="password" id="l-pass" placeholder="Senha">
                 <button onclick="fazerLogin()">Entrar</button>
-                <p class="toggle-link" onclick="toggleRegister()">Não tem conta? Cadastre-se</p>
+                <p onclick="toggleLogin(true)" class="link">Novo Cadastro</p>
             </div>
-
-            <div id="form-register-area" style="display: none;">
-                <h2>Novo Cadastro</h2>
-                <input type="text" id="reg-nome" placeholder="Nome Completo">
-                <input type="text" id="reg-user" placeholder="Crie um Usuário">
-                <input type="password" id="reg-pass" placeholder="Crie uma Senha">
-                <input type="text" id="reg-cpf" placeholder="CPF">
-                <input type="text" id="reg-tel" placeholder="Telefone">
-                <button onclick="registrarNovoUsuario()">Cadastrar</button>
-                <p class="toggle-link" onclick="toggleRegister()">Já tem conta? Fazer Login</p>
+            <div id="form-reg" style="display:none">
+                <input type="text" id="r-nome" placeholder="Nome Completo">
+                <input type="text" id="r-user" placeholder="Usuário">
+                <input type="password" id="r-pass" placeholder="Senha">
+                <input type="text" id="r-cpf" placeholder="CPF">
+                <input type="text" id="r-tel" placeholder="Telefone">
+                <button onclick="registrar()">Cadastrar</button>
+                <p onclick="toggleLogin(false)" class="link">Voltar</p>
             </div>
-
-            <p id="login-msg" style="margin-top: 10px; min-height: 20px;"></p>
+            <p id="msg"></p>
         </div>
     </div>
-    <div id="app-container" style="display: none;">
-        
+
+    <div id="app" style="display:none">
         <nav class="sidebar">
-            <div class="logo">Mundo do Jeans</div>
-            <div class="user-info">Olá, <span id="display-user"></span></div>
+            <div class="logo">MUNDO DO JEANS</div>
+            <p>Olá, <span id="u-nome"></span></p>
             <ul>
-                <li onclick="showScreen('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
-                <li onclick="showScreen('vender')"><i class="fas fa-shopping-cart"></i> Vender Agora</li>
-                <li onclick="showScreen('estoque')"><i class="fas fa-boxes"></i> Estoque</li>
-                <li onclick="showScreen('ponto')"><i class="fas fa-clock"></i> Folha de Ponto</li>
-                <li onclick="showScreen('config')"><i class="fas fa-cog"></i> Minha Loja</li>
-                <li onclick="logout()" class="logout"><i class="fas fa-sign-out-alt"></i> Sair</li>
+                <li onclick="show('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</li>
+                <li onclick="show('vender')"><i class="fas fa-cash-register"></i> Vender</li>
+                <li onclick="show('estoque')"><i class="fas fa-boxes"></i> Estoque</li>
+                <li onclick="show('ponto')"><i class="fas fa-user-clock"></i> Ponto</li>
+                <li onclick="show('config')"><i class="fas fa-store"></i> Minha Loja</li>
+                <li onclick="location.reload()" class="logout">Sair</li>
             </ul>
         </nav>
-
         <main class="content">
-            
-            <section id="screen-dashboard" class="screen">
-                <h2>Visão Geral</h2>
-                <div class="kpi-container">
-                    <div class="kpi-card">
-                        <h3>Vendas Hoje</h3>
-                        <p id="kpi-vendas-hoje">R$ 0,00</p>
-                    </div>
-                    <div class="kpi-card">
-                        <h3>Lucro Líquido (Mês)</h3>
-                        <p id="kpi-lucro-mes">R$ 0,00</p>
-                    </div>
-                    <div class="kpi-card">
-                        <h3>Top Vendedor</h3>
-                        <p id="kpi-top-vendedor">-</p>
-                    </div>
+            <section id="s-dashboard" class="screen">
+                <h2>Dashboard</h2>
+                <div class="kpi-grid">
+                    <div class="card"><h3>Vendas Hoje</h3><p id="dash-hoje">R$ 0,00</p></div>
+                    <div class="card"><h3>Lucro Líquido</h3><p id="dash-lucro">R$ 0,00</p></div>
+                    <div class="card"><h3>Top Vendedor</h3><p id="dash-vendedor">-</p></div>
                 </div>
-                <div class="charts-area">
-                    <canvas id="chart-vendas-ano"></canvas>
-                </div>
-                <h3>Top 10 Produtos</h3>
-                <ul id="top-produtos-list"></ul>
+                <h3>Top 10 Produtos (Qtd)</h3>
+                <ul id="top-prod"></ul>
             </section>
 
-            <section id="screen-vender" class="screen" style="display:none;">
-                <h2>Nova Venda</h2>
-                <div class="pdv-layout">
-                    <div class="product-list">
-                        <input type="text" id="search-product" placeholder="Buscar produto (Nome ou Código)..." onkeyup="filtrarProdutos()">
-                        <div id="catalog-container">
-                            </div>
-                    </div>
-                    <div class="cart-panel">
+            <section id="s-vender" class="screen" style="display:none">
+                <h2>Venda Agora</h2>
+                <div class="pdv-container">
+                    <div class="catalog"><input type="text" onkeyup="buscaProd(this.value)" placeholder="Buscar..."> <div id="items"></div></div>
+                    <div class="cart">
                         <h3>Carrinho</h3>
-                        <ul id="cart-items"></ul>
-                        <div class="cart-summary">
-                            <p>Total: <span id="cart-total">R$ 0,00</span></p>
-                            <button onclick="abrirPagamento()">Finalizar Venda</button>
-                        </div>
+                        <div id="cart-list"></div>
+                        <h2 id="total">R$ 0,00</h2>
+                        <button onclick="abrirPgto()" class="gold">Finalizar</button>
                     </div>
                 </div>
             </section>
 
-            <div id="modal-pagamento" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="fecharModal('modal-pagamento')">&times;</span>
-                    <h3>Pagamento</h3>
-                    <p>Total a Pagar: <span id="modal-total-value"></span></p>
-                    
-                    <label>CPF Cliente (Obrigatório para Crediário/Pix):</label>
-                    <input type="text" id="cli-cpf">
-                    <label>Telefone:</label>
-                    <input type="text" id="cli-tel">
-
-                    <label>Método:</label>
-                    <select id="pagamento-metodo" onchange="checkMetodo()">
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="Cartão Débito">Cartão Débito</option>
-                        <option value="Cartão Crédito">Cartão Crédito</option>
-                        <option value="Pix">Pix</option>
-                        <option value="Crediário">Crediário</option>
-                    </select>
-
-                    <div id="credito-options" style="display:none;">
-                        <input type="number" id="parcelas" placeholder="Número de Parcelas">
-                        <label>Data Limite:</label>
-                        <input type="date" id="data-limite">
-                    </div>
-
-                    <div id="pix-area" style="display:none; text-align:center;">
-                        <canvas id="qr-pix"></canvas>
-                        <p style="font-size:12px;">Chave: 84991000682 (Luciana Oliveira)</p>
-                    </div>
-
-                    <button onclick="confirmarVenda()" class="btn-gold">Confirmar Venda</button>
+            <section id="s-estoque" class="screen" style="display:none">
+                <h2>Estoque</h2>
+                <div class="card-form">
+                    <input type="text" id="p-nome" placeholder="Nome">
+                    <input type="text" id="p-cod" placeholder="Código">
+                    <input type="number" id="p-qtd" placeholder="Qtd">
+                    <input type="number" id="p-compra" placeholder="Preço Compra">
+                    <input type="number" id="p-venda" placeholder="Preço Venda">
+                    <button onclick="addProd()">Salvar</button>
                 </div>
-            </div>
-
-            <section id="screen-estoque" class="screen" style="display:none;">
-                <h2>Gestão de Estoque</h2>
-                
-                <div class="card-form" style="background: #2c2c2c; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--gold);">
-                    <h3 style="margin-top:0;">Adicionar Novo Produto</h3>
-                    <div class="form-grid-3">
-                        <input type="text" id="prod-nome" placeholder="Nome do Produto">
-                        <input type="text" id="prod-cod" placeholder="Código (Auto ou Manual)">
-                        <input type="number" id="prod-qtd" placeholder="Qtd Inicial">
-                        <input type="number" id="prod-compra" placeholder="Preço Compra (R$)">
-                        <input type="number" id="prod-venda" placeholder="Preço Venda (R$)">
-                        <input type="text" id="prod-desc" placeholder="Descrição">
-                    </div>
-                    <button onclick="adicionarProduto()" style="width: auto; margin-top: 10px;">Salvar Produto</button>
-                    <button onclick="gerarCodigoAuto()" style="width: auto; margin-top: 10px; background: #555; color: white;">Gerar Código Auto</button>
-                </div>
-
-                <h3>Lista de Produtos</h3>
-                <div id="estoque-lista-container">
-                    <table style="width:100%; border-collapse: collapse; color: white;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--gold);">
-                                <th align="left">Cód</th>
-                                <th align="left">Nome</th>
-                                <th align="center">Estoque</th>
-                                <th align="right">Preço</th>
-                            </tr>
-                        </thead>
-                        <tbody id="estoque-tabela-body"></tbody>
-                    </table>
-                </div>
+                <table id="tbl-est">
+                    <thead><tr><th>Cód</th><th>Nome</th><th>Qtd</th><th>Preço</th></tr></thead>
+                    <tbody></tbody>
+                </table>
             </section>
-            
-            <section id="screen-ponto" class="screen" style="display:none;">
-                <h2>Registro de Ponto</h2>
-                <div class="ponto-card">
-                    <p id="ponto-relogio" style="font-size: 2em; font-weight: bold;"></p>
-                    <select id="ponto-tipo">
-                        <option value="Check-in">Check-in (Entrada)</option>
-                        <option value="Saída Almoço">Saída para Almoço</option>
-                        <option value="Retorno Almoço">Retorno do Almoço</option>
-                        <option value="Check-out">Check-out (Saída)</option>
-                    </select>
-                    <input type="password" id="ponto-senha" placeholder="Confirme sua senha">
-                    <button onclick="registrarPonto()">Registrar</button>
-                    <p id="ponto-msg"></p>
+
+            <section id="s-ponto" class="screen" style="display:none">
+                <h2>Ponto Eletrônico</h2>
+                <div class="card" style="max-width:400px; margin:auto">
+                    <h1 id="relogio">00:00:00</h1>
+                    <select id="pt-tipo"><option>Check-in</option><option>Saída Almoço</option><option>Retorno Almoço</option><option>Check-out</option></select>
+                    <input type="password" id="pt-pass" placeholder="Sua Senha">
+                    <button onclick="baterPonto()">Registrar Ponto</button>
                 </div>
             </section>
 
-            <section id="screen-config" class="screen" style="display:none;">
-                <h2>Minha Loja & Despesas</h2>
-                <p>Mantenha os dados atualizados para o cálculo correto dos lucros.</p>
-                
+            <section id="s-config" class="screen" style="display:none">
+                <h2>Configurações</h2>
                 <div class="form-grid-2">
-                    <div class="group">
-                        <h3>Endereço</h3>
-                        <input type="text" id="conf-loja" placeholder="Nome da Loja">
-                        <input type="text" id="conf-rua" placeholder="Rua">
-                        <input type="text" id="conf-numero" placeholder="Número">
-                        <input type="text" id="conf-bairro" placeholder="Bairro">
-                        <input type="text" id="conf-cidade" placeholder="Cidade">
-                        <input type="text" id="conf-cep" placeholder="CEP">
-                    </div>
-
-                    <div class="group">
-                        <h3>Despesas Mensais (R$)</h3>
-                        <label>Água:</label> <input type="number" id="conf-agua">
-                        <label>Luz:</label> <input type="number" id="conf-luz">
-                        <label>Internet:</label> <input type="number" id="conf-internet">
-                        <label>Aluguel:</label> <input type="number" id="conf-aluguel">
-                        <label>Embalagens:</label> <input type="number" id="conf-embalagens">
-                        <label>Funcionários:</label> <input type="number" id="conf-func">
-                        <label>Despesas Gerais:</label> <input type="number" id="conf-gerais">
-                    </div>
+                    <input type="text" id="c-loja" placeholder="Nome da Loja">
+                    <input type="text" id="c-rua" placeholder="Rua">
+                    <input type="text" id="c-bairro" placeholder="Bairro">
+                    <input type="text" id="c-cidade" placeholder="Cidade">
+                    <input type="number" id="c-agua" placeholder="Água">
+                    <input type="number" id="c-luz" placeholder="Luz">
+                    <input type="number" id="c-aluguel" placeholder="Aluguel">
+                    <input type="number" id="c-gerais" placeholder="Gerais">
                 </div>
-                <button onclick="salvarConfiguracoes()" class="btn-gold" style="margin-top: 20px;">Salvar Alterações</button>
-                <p id="conf-msg"></p>
+                <button onclick="saveConf()">Salvar</button>
             </section>
-
         </main>
+    </div>
+
+    <div id="m-pgto" class="modal">
+        <div class="modal-content">
+            <h3>Pagamento</h3>
+            <input type="text" id="cli-cpf" placeholder="CPF Cliente (Crediário)">
+            <select id="metodo" onchange="checkPix(this.value)">
+                <option>Espécie</option><option>Cartão</option><option>Pix</option><option>Crediário</option>
+            </select>
+            <div id="pix-area" style="display:none"><canvas id="qr"></canvas></div>
+            <button onclick="confirmarVenda()">Confirmar</button>
+            <button onclick="document.getElementById('m-pgto').style.display='none'">Cancelar</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
