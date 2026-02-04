@@ -12,8 +12,8 @@ async function call(action, data = {}) {
 function toggleLogin(reg) {
     document.getElementById('form-login').style.display = reg ? 'none' : 'block';
     document.getElementById('form-reg').style.display = reg ? 'block' : 'none';
+    document.getElementById('msg').innerText = ""; // Limpa avisos
 }
-
 async function fazerLogin() {
     const btn = document.querySelector("#form-login button");
     const originalText = btn.innerText;
@@ -37,7 +37,7 @@ async function fazerLogin() {
             alert(res.message);
         }
     } catch (e) {
-        alert("Erro na conexão.");
+        alert("Erro na conexão com o servidor.");
     } finally {
         btn.innerText = originalText;
         btn.classList.remove("loading");
@@ -155,6 +155,12 @@ async function confirmarVenda() {
         return alert("Para Crediário, CPF e Telefone são obrigatórios!");
     }
 
+    if (cart.length === 0) return alert("Carrinho vazio!");
+
+    const btn = document.querySelector("#m-pgto button");
+    btn.innerText = "Salvando Venda...";
+    btn.classList.add("loading");
+
     const sale = {
         codigoVenda: "V" + Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
@@ -166,29 +172,24 @@ async function confirmarVenda() {
         cpf: cpf,
         items: cart
     };
-    const res = await call("save_sale", { saleData: sale });
-    const resConfig = await call("get_config"); // Busca dados da loja para o cupom
-    
-    if (res.status === "success") {
-        gerarCupomTXT(sale, resConfig.config);
-        alert("Venda Finalizada e Cupom Gerado!");
-        // ... (limpeza de carrinho e redirect)
-    }
-}
 
     try {
+        // AQUI ESTAVA O ERRO: Esta função PRECISA ser async para usar o await abaixo
         const res = await call("save_sale", { saleData: sale });
+        const resConfig = await call("get_config"); 
+        
         if (res.status === "success") {
-            alert("Venda finalizada com sucesso!");
+            gerarCupomTXT(sale, resConfig.config);
+            alert("Venda Finalizada e Cupom Gerado!");
             cart = [];
             renderCart();
             document.getElementById('m-pgto').style.display = 'none';
             show('dashboard');
         }
     } catch (e) {
-        alert("Erro ao salvar venda.");
+        alert("Erro ao salvar venda. Verifique a conexão.");
     } finally {
-        btn.innerText = originalText;
+        btn.innerText = "Confirmar e Gerar Cupom";
         btn.classList.remove("loading");
     }
 }
