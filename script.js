@@ -534,28 +534,27 @@ function filtrarHistoricoVendas() {
     });
 }
 // CONFIGURAÇÃO DO SEU PIX
-const MINHA_CHAVE_PIX = "5584991096792"; // Pode ser CPF, CNPJ, Email ou Aleatória
+const MINHA_CHAVE_PIX = "+5584991096792"; // Pode ser CPF, CNPJ, Email ou Aleatória
 const NOME_LOJA = "MUNDODOJEANS";
 const CIDADE_LOJA = "CEARAMIRIM"; // Sem acentos
 
 function gerarPayloadPix(valor) {
-    const chaveLimpa = "5584991096792"; // Sua chave exata
-    const nomeLoja = "MUNDODOJEANS";     // Sem espaços para garantir
-    const cidadeLoja = "CEARAMIRIM";     // Sem espaços ou acentos
+    // AJUSTE AQUI: Mantenha o +55 e os números, sem espaços ou parênteses
+    const chavePix = "+5584991096792"; 
+    const nomeLoja = "MUNDODOJEANS";     
+    const cidadeLoja = "CEARAMIRIM";     
     const v = parseFloat(valor).toFixed(2);
 
-    // Função mestre: conta os caracteres e monta o campo no padrão EMV
     const f = (id, conteudo) => {
         const tam = String(conteudo.length).padStart(2, '0');
         return id + tam + conteudo;
     };
 
-    // Monta o sub-campo 26 (Dados da conta)
-    const campo26 = f("00", "br.gov.bcb.pix") + f("01", chaveLimpa);
+    // Monta o campo 26 corretamente para Telefone
+    const campo26 = f("00", "br.gov.bcb.pix") + f("01", chavePix);
 
-    // Monta o Payload principal
     let payload = "000201"; 
-    payload += f("26", campo26); // Aqui o tamanho será calculado automaticamente (ID 26)
+    payload += f("26", campo26); 
     payload += "52040000"; 
     payload += "5303986";  
     payload += f("54", v); 
@@ -563,9 +562,9 @@ function gerarPayloadPix(valor) {
     payload += f("59", nomeLoja);
     payload += f("60", cidadeLoja);
     payload += "62070503***"; 
-    payload += "6304"; // Início do CRC16
+    payload += "6304"; 
 
-    // Cálculo do CRC16 (Não altere nada aqui)
+    // Cálculo do CRC16
     let crc = 0xFFFF;
     for (let i = 0; i < payload.length; i++) {
         crc ^= payload.charCodeAt(i) << 8;
