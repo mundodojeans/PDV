@@ -96,19 +96,32 @@
             </section>
 
             <section id="s-config" class="screen" style="display:none">
-                <h2>Configurações</h2>
-                <div class="form-grid-2">
-                    <input type="text" id="c-loja" placeholder="Nome da Loja">
-                    <input type="text" id="c-rua" placeholder="Rua">
-                    <input type="text" id="c-bairro" placeholder="Bairro">
-                    <input type="text" id="c-cidade" placeholder="Cidade">
-                    <input type="number" id="c-agua" placeholder="Água">
-                    <input type="number" id="c-luz" placeholder="Luz">
-                    <input type="number" id="c-aluguel" placeholder="Aluguel">
-                    <input type="number" id="c-gerais" placeholder="Gerais">
-                </div>
-                <button onclick="saveConf()">Salvar</button>
-            </section>
+    <h2>Minha Loja</h2>
+    
+    <div id="config-view" class="card">
+        <p><strong>Loja:</strong> <span id="v-loja">-</span></p>
+        <p><strong>Endereço:</strong> <span id="v-end">-</span></p>
+        <p><strong>Despesas Fixas:</strong> R$ <span id="v-gastos">-</span></p>
+        <button onclick="toggleEditConfig(true)">Editar Dados</button>
+    </div>
+
+    <div id="config-edit" style="display:none" class="card-form">
+        <div class="form-grid-2">
+            <input type="text" id="c-loja" placeholder="Nome da Loja">
+            <input type="text" id="c-rua" placeholder="Rua">
+            <input type="text" id="c-bairro" placeholder="Bairro">
+            <input type="text" id="c-cidade" placeholder="Cidade">
+            <input type="number" id="c-agua" placeholder="Água">
+            <input type="number" id="c-luz" placeholder="Luz">
+            <input type="number" id="c-aluguel" placeholder="Aluguel">
+            <input type="number" id="c-internet" placeholder="Internet">
+            <input type="number" id="c-func" placeholder="Funcionários">
+            <input type="number" id="c-gerais" placeholder="Outros Gastos">
+        </div>
+        <button onclick="saveConf()">Salvar Alterações</button>
+        <button onclick="toggleEditConfig(false)" style="background:#555">Cancelar</button>
+    </div>
+</section>
         </main>
     </div>
 
