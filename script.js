@@ -52,14 +52,26 @@ async function addProd() {
 }
 
 // PDV
-function loadPDV() {
+async function loadPDV() {
     const container = document.getElementById('items');
-    container.innerHTML = "";
-    prods.forEach(p => {
-        container.innerHTML += `<div class="card" onclick="addCart('${p[0]}')" style="margin:5px; cursor:pointer"><b>${p[1]}</b><br>R$ ${p[4]}</div>`;
-    });
+    container.innerHTML = "Carregando produtos...";
+    
+    const res = await call("get_products");
+    if (res.status === "success") {
+        prods = res.products;
+        container.innerHTML = "";
+        prods.forEach(p => {
+            if(parseInt(p[2]) > 0) { // Só mostra se tiver estoque
+                container.innerHTML += `
+                <div class="card" onclick="addCart('${p[0]}')" style="margin:5px; cursor:pointer; background:#222; border:1px solid #444">
+                    <b style="color:var(--gold)">${p[1]}</b><br>
+                    <small>Cód: ${p[0]} | Est: ${p[2]}</small><br>
+                    <b>R$ ${parseFloat(p[4]).toFixed(2)}</b>
+                </div>`;
+            }
+        });
+    }
 }
-
 function addCart(cod) {
     const p = prods.find(x => x[0] == cod);
     cart.push({ codigo: p[0], nome: p[1], qtd: 1, valorTotal: p[4] });
@@ -108,29 +120,50 @@ async function confirmarVenda() {
 // DASHBOARD
 async function loadDash() {
     const res = await call("get_dashboard");
+    if (res.status !== "success") return;
+
     const hoje = new Date().toLocaleDateString('pt-BR');
     let vHoje = 0, lMes = 0;
-    let rank = {};
+    let rankProd = {}, rankVend = {};
 
     const custos = {};
-    res.estoque.forEach(e => custos[e[0]] = e[3]);
+    res.estoque.forEach(e => custos[String(e[0])] = parseFloat(e[3]) || 0);
 
     res.vendas.forEach(v => {
-        if(v[4] === hoje) vHoje += v[3];
-        lMes += (v[3] - (custos[v[0]] * v[2]));
-        rank[v[0]] = (rank[v[0]] || 0) + v[2];
+        const cod = String(v[0]);
+        const qtd = parseInt(v[2]) || 0;
+        const valorVenda = parseFloat(v[3]) || 0;
+        const dataVenda = v[4] instanceof Date ? v[4].toLocaleDateString('pt-BR') : String(v[4]).split('T')[0].split('-').reverse().join('/'); 
+        // A linha acima trata datas vindas como Objeto ou String ISO
+        
+        const vendedor = v[6] || "Sistema";
+
+        // Vendas Hoje
+        if (dataVenda.includes(hoje) || dataVenda === hoje) {
+            vHoje += valorVenda;
+        }
+
+        // Lucro (Venda - Custo)
+        lMes += (valorVenda - ((custos[cod] || 0) * qtd));
+
+        // Rankings
+        rankProd[cod] = (rankProd[cod] || 0) + qtd;
+        rankVend[vendedor] = (rankVend[vendedor] || 0) + valorVenda;
     });
 
-    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toFixed(2)}`;
-    document.getElementById('dash-lucro').innerText = `R$ ${lMes.toFixed(2)}`;
+    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+    document.getElementById('dash-lucro').innerText = `R$ ${lMes.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
     
+    // Top Vendedor
+    const topV = Object.entries(rankVend).sort((a,b) => b[1] - a[1])[0];
+    document.getElementById('dash-vendedor').innerText = topV ? topV[0] : "-";
+
     const list = document.getElementById('top-prod');
     list.innerHTML = "";
-    Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(r => {
+    Object.entries(rankProd).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(r => {
         list.innerHTML += `<li>Cód ${r[0]}: ${r[1]} unidades</li>`;
     });
 }
-
 // PONTO
 setInterval(() => document.getElementById('relogio').innerText = new Date().toLocaleTimeString(), 1000);
 
