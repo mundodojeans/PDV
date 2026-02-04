@@ -20,4 +20,37 @@ button:hover { background: #b8962d; }
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 th { border-bottom: 2px solid var(--gold); padding: 10px; text-align: left; }
 td { padding: 10px; border-bottom: 1px solid #333; }
-.link { color: var(--gold); cursor: pointer; font-size: 0.8em; }
+.link { color: var(--gold); cursor: pointer; font-size: 0.8em; } /* Responsividade para Celulares */
+@media (max-width: 768px) {
+    #app { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--gold); }
+    .sidebar ul { display: flex; overflow-x: auto; padding: 0; }
+    .sidebar li { white-space: nowrap; padding: 10px 20px; }
+    .pdv-container { flex-direction: column; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .content { padding: 15px; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Estado de Carregamento */
+.loading {
+    opacity: 0.6;
+    pointer-events: none; /* Impede cliques duplos */
+    position: relative;
+}
+
+.loading::after {
+    content: " ⏳";
+    animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Estilo do Item no Carrinho */
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
