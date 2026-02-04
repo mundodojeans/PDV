@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -183,6 +184,16 @@
             </div>
 
         </main>
+        <div id="modal-pix" class="modal hidden">
+    <div class="modal-content" style="text-align: center;">
+        <span class="close" onclick="fecharModalPix()">&times;</span>
+        <h2 class="gold">Pagamento via Pix</h2>
+        <div id="qrcode-container" style="display: flex; justify-content: center; margin: 20px 0; background: white; padding: 10px; border-radius: 10px;"></div>
+        <p style="font-size: 0.8em; color: var(--text-grey);">Escaneie o QR Code acima</p>
+        <textarea id="pix-copia-cola" readonly style="width: 100%; height: 60px; font-size: 10px; margin-top: 10px;"></textarea>
+        <button class="btn-gold full" style="margin-top:10px" onclick="confirmarPagamentoPix()">Confirmar que recebi</button>
+    </div>
+</div>
     </section>
 
     <div id="modal-produto" class="modal hidden">
