@@ -539,26 +539,33 @@ const NOME_LOJA = "MUNDODOJEANS";
 const CIDADE_LOJA = "CEARAMIRIM"; // Sem acentos
 
 function gerarPayloadPix(valor) {
+    const chaveLimpa = "5584991096792"; // Sua chave exata
+    const nomeLoja = "MUNDODOJEANS";     // Sem espaços para garantir
+    const cidadeLoja = "CEARAMIRIM";     // Sem espaços ou acentos
     const v = parseFloat(valor).toFixed(2);
-    
-    // Função para formatar o tamanho do campo (padrão EMV)
-    const f = (id, conteudo) => id + String(conteudo.length).padStart(2, '0') + conteudo;
 
-    // Estrutura básica do Payload Pix Estático
-    let payload = "000201"; // Versão do payload
-    payload += "26" + (31 + MINHA_CHAVE_PIX.length); // Domínio da conta
-    payload += f("00", "br.gov.bcb.pix");
-    payload += f("01", MINHA_CHAVE_PIX);
-    payload += "52040000"; // Categoria do negócio
-    payload += "5303986";  // Moeda (BRL)
-    payload += f("54", v); // VALOR DA VENDA
-    payload += "5802BR";   // Código do país
-    payload += f("59", NOME_LOJA);
-    payload += f("60", CIDADE_LOJA);
-    payload += "62070503***"; // ID da transação (fixo como ***)
-    
-    // Cálculo do CRC16 (validação final do código)
-    payload += "6304";
+    // Função mestre: conta os caracteres e monta o campo no padrão EMV
+    const f = (id, conteudo) => {
+        const tam = String(conteudo.length).padStart(2, '0');
+        return id + tam + conteudo;
+    };
+
+    // Monta o sub-campo 26 (Dados da conta)
+    const campo26 = f("00", "br.gov.bcb.pix") + f("01", chaveLimpa);
+
+    // Monta o Payload principal
+    let payload = "000201"; 
+    payload += f("26", campo26); // Aqui o tamanho será calculado automaticamente (ID 26)
+    payload += "52040000"; 
+    payload += "5303986";  
+    payload += f("54", v); 
+    payload += "5802BR";   
+    payload += f("59", nomeLoja);
+    payload += f("60", cidadeLoja);
+    payload += "62070503***"; 
+    payload += "6304"; // Início do CRC16
+
+    // Cálculo do CRC16 (Não altere nada aqui)
     let crc = 0xFFFF;
     for (let i = 0; i < payload.length; i++) {
         crc ^= payload.charCodeAt(i) << 8;
@@ -571,28 +578,6 @@ function gerarPayloadPix(valor) {
     
     return payload;
 }
-
-// Funções de Interface do Pix
-function abrirPix() {
-    const totalRaw = document.getElementById('cart-total-value').innerText;
-    const total = totalRaw.replace('R$', '').replace('.', '').replace(',', '.').trim();
-    
-    if(parseFloat(total) <= 0) return alert("Carrinho vazio!");
-
-    const payload = gerarPayloadPix(total);
-    document.getElementById('pix-copia-cola').value = payload;
-    
-    // Limpa QR Code anterior e gera novo
-    document.getElementById('qrcode-container').innerHTML = "";
-    new QRCode(document.getElementById("qrcode-container"), {
-        text: payload,
-        width: 180,
-        height: 180
-    });
-
-    document.getElementById('modal-pix').classList.remove('hidden');
-}
-
 function fecharModalPix() {
     document.getElementById('modal-pix').classList.add('hidden');
 }
