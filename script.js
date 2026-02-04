@@ -147,23 +147,34 @@ function checkPix(v) {
 }
 
 async function confirmarVenda() {
-    if (cart.length === 0) return alert("Carrinho vazio!");
+    const metodo = document.getElementById('metodo').value;
+    const cpf = document.getElementById('cli-cpf').value;
+    const tel = document.getElementById('cli-tel').value;
 
-    const btn = document.querySelector("#m-pgto button");
-    const originalText = btn.innerText;
-    
-    btn.innerText = "Salvando Venda...";
-    btn.classList.add("loading");
+    if (metodo === 'Crediário' && (!cpf || !tel)) {
+        return alert("Para Crediário, CPF e Telefone são obrigatórios!");
+    }
 
     const sale = {
         codigoVenda: "V" + Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
         vendedor: user.nome,
-        metodo: document.getElementById('metodo').value,
-        cpf: document.getElementById('cli-cpf').value,
+        metodo: metodo,
+        parcelas: document.getElementById('p-parcelas').value,
+        telefone: tel,
+        cpf: cpf,
         items: cart
     };
+    const res = await call("save_sale", { saleData: sale });
+    const resConfig = await call("get_config"); // Busca dados da loja para o cupom
+    
+    if (res.status === "success") {
+        gerarCupomTXT(sale, resConfig.config);
+        alert("Venda Finalizada e Cupom Gerado!");
+        // ... (limpeza de carrinho e redirect)
+    }
+}
 
     try {
         const res = await call("save_sale", { saleData: sale });
@@ -186,48 +197,52 @@ async function loadDash() {
     const res = await call("get_dashboard");
     if (res.status !== "success") return;
 
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    let vHoje = 0, lMes = 0;
-    let rankProd = {}, rankVend = {};
+    const agora = new Date();
+    const hoje = agora.toLocaleDateString('pt-BR');
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
 
+    let vHoje = 0, vMes = 0, vAno = 0, lucroMesTotal = 0;
+    let rankMes = {}, rankAno = {};
     const custos = {};
     res.estoque.forEach(e => custos[String(e[0])] = parseFloat(e[3]) || 0);
 
     res.vendas.forEach(v => {
-        const cod = String(v[0]);
-        const qtd = parseInt(v[2]) || 0;
         const valorVenda = parseFloat(v[3]) || 0;
-        const dataVenda = v[4] instanceof Date ? v[4].toLocaleDateString('pt-BR') : String(v[4]).split('T')[0].split('-').reverse().join('/'); 
-        // A linha acima trata datas vindas como Objeto ou String ISO
+        const qtd = parseInt(v[2]) || 0;
+        const cod = String(v[0]);
         
-        const vendedor = v[6] || "Sistema";
+        // Converter data da planilha (v[4]) para objeto Date
+        const partesData = String(v[4]).split('/');
+        const dataV = new Date(partesData[2], partesData[1] - 1, partesData[0]);
 
-        // Vendas Hoje
-        if (dataVenda.includes(hoje) || dataVenda === hoje) {
-            vHoje += valorVenda;
+        // Acumuladores
+        if (v[4] === hoje) vHoje += valorVenda;
+        if (dataV.getMonth() === mesAtual && dataV.getFullYear() === anoAtual) {
+            vMes += valorVenda;
+            lucroMesTotal += (valorVenda - ((custos[cod] || 0) * qtd));
+            rankMes[cod] = (rankMes[cod] || 0) + qtd;
         }
-
-        // Lucro (Venda - Custo)
-        lMes += (valorVenda - ((custos[cod] || 0) * qtd));
-
-        // Rankings
-        rankProd[cod] = (rankProd[cod] || 0) + qtd;
-        rankVend[vendedor] = (rankVend[vendedor] || 0) + valorVenda;
+        if (dataV.getFullYear() === anoAtual) {
+            vAno += valorVenda;
+            rankAno[cod] = (rankAno[cod] || 0) + qtd;
+        }
     });
 
-    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
-    document.getElementById('dash-lucro').innerText = `R$ ${lMes.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+    // Despesas fixas da Config
+    const c = res.config;
+    const despesas = (parseFloat(c.agua)||0)+(parseFloat(c.luz)||0)+(parseFloat(c.aluguel)||0)+(parseFloat(c.internet)||0)+(parseFloat(c.func)||0)+(parseFloat(c.gerais)||0);
     
-    // Top Vendedor
-    const topV = Object.entries(rankVend).sort((a,b) => b[1] - a[1])[0];
-    document.getElementById('dash-vendedor').innerText = topV ? topV[0] : "-";
+    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toFixed(2)}`;
+    document.getElementById('dash-mes').innerText = `R$ ${vMes.toFixed(2)}`;
+    document.getElementById('dash-ano').innerText = `R$ ${vAno.toFixed(2)}`;
+    document.getElementById('dash-lucro').innerText = `R$ ${(lucroMesTotal - despesas).toFixed(2)}`;
 
-    const list = document.getElementById('top-prod');
-    list.innerHTML = "";
-    Object.entries(rankProd).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(r => {
-        list.innerHTML += `<li>Cód ${r[0]}: ${r[1]} unidades</li>`;
-    });
+    // Renderizar Rankings (Mes e Ano) - Funçao simplificada para o exemplo
+    renderRank('top-prod-mes', rankMes);
+    renderRank('top-prod-ano', rankAno);
 }
+
 // PONTO
 setInterval(() => document.getElementById('relogio').innerText = new Date().toLocaleTimeString(), 1000);
 
@@ -294,4 +309,57 @@ async function saveConf() {
     alert("Configurações salvas!");
     toggleEditConfig(false);
     loadConf();
+}
+function renderRank(id, data) {
+    const el = document.getElementById(id);
+    el.innerHTML = "";
+    Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(r => {
+        el.innerHTML += `<li>Cód ${r[0]}: ${r[1]} un</li>`;
+    });
+}
+function gerarCupomTXT(venda, config) {
+    let cupom = `
+=========================================
+        ${config.loja.toUpperCase()}
+=========================================
+Endereço: ${config.rua}, ${config.bairro}
+Cidade: ${config.cidade}
+Data: ${venda.data}   Hora: ${venda.hora}
+Vendedor: ${venda.vendedor}
+-----------------------------------------
+ITEM         QTD    UNID       TOTAL
+`;
+
+    venda.items.forEach(item => {
+        let nomeLimitado = item.nome.substring(0, 12).padEnd(12, ' ');
+        cupom += `${nomeLimitado} ${item.qtd.toString().padEnd(6, ' ')} R$ ${item.valorUnitario.toFixed(2).padEnd(8, ' ')} R$ ${item.valorTotal.toFixed(2)}\n`;
+    });
+
+    cupom += `-----------------------------------------
+TOTAL A PAGAR:          R$ ${document.getElementById('total').innerText}
+FORMA DE PGTO:          ${venda.metodo} ${venda.parcelas > 1 ? '('+venda.parcelas+'x)' : ''}
+-----------------------------------------
+Cliente: ${venda.cpf || 'Nao informado'}
+Tel: ${venda.telefone || 'Nao informado'}
+=========================================
+      OBRIGADO PELA PREFERENCIA!
+=========================================`;
+
+    const blob = new Blob([cupom], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `Cupom_${venda.codigoVenda}.txt`;
+    link.click();
+}
+function atualizarInterfacePgto(metodo) {
+    document.getElementById('area-parcelas').style.display = (metodo === 'Cartão de Crédito') ? 'block' : 'none';
+    document.getElementById('pix-area').style.display = (metodo === 'Pix') ? 'block' : 'none';
+    
+    // Torna obrigatório no visual se for crediário
+    const inputs = document.querySelectorAll('#area-cliente input');
+    if (metodo === 'Crediário') {
+        inputs.forEach(i => i.style.border = "2px solid #D4AF37");
+    } else {
+        inputs.forEach(i => i.style.border = "1px solid #444");
+    }
 }
