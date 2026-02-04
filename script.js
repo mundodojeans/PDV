@@ -534,8 +534,8 @@ function filtrarHistoricoVendas() {
     });
 }
 // CONFIGURAÇÃO DO SEU PIX
-const MINHA_CHAVE_PIX = "+5584991096792"; // Pode ser CPF, CNPJ, Email ou Aleatória
-const NOME_LOJA = "MUNDO DO JEANS";
+const MINHA_CHAVE_PIX = "5584991096792"; // Pode ser CPF, CNPJ, Email ou Aleatória
+const NOME_LOJA = "MUNDODOJEANS";
 const CIDADE_LOJA = "CEARAMIRIM"; // Sem acentos
 
 function gerarPayloadPix(valor) {
