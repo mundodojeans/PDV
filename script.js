@@ -423,22 +423,25 @@ async function adicionarProduto() {
 async function carregarEstoqueVisual() {
     const res = await callApi({ action: "get_products" });
     const tbody = document.getElementById('estoque-tabela-body');
+    if (!tbody) return;
     tbody.innerHTML = "";
     
-    if(res.status === "success") {
+    if(res.status === "success" && res.products) {
         res.products.forEach(p => {
             const tr = document.createElement('tr');
+            // Usamos os nomes exatos das propriedades que definimos no getProducts do Apps Script
             tr.innerHTML = `
-                <td style="padding:10px; border-bottom:1px solid #444;">${p.codigo}</td>
-                <td style="padding:10px; border-bottom:1px solid #444;">${p.nome}</td>
-                <td style="padding:10px; border-bottom:1px solid #444; text-align:center;">${p.estoque}</td>
-                <td style="padding:10px; border-bottom:1px solid #444; text-align:right;">R$ ${p.preco_revenda}</td>
+                <td style="padding:10px; border-bottom:1px solid #444;">${p.codigo || ''}</td>
+                <td style="padding:10px; border-bottom:1px solid #444;">${p.nome || ''}</td>
+                <td style="padding:10px; border-bottom:1px solid #444; text-align:center;">${p.estoque || 0}</td>
+                <td style="padding:10px; border-bottom:1px solid #444; text-align:right;">R$ ${parseFloat(p.preco_revenda || 0).toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });
+    } else {
+        tbody.innerHTML = "<tr><td colspan='4'>Nenhum produto encontrado ou erro ao carregar.</td></tr>";
     }
 }
-
 // === MINHA LOJA / CONFIGURAÇÕES ===
 
 async function carregarConfiguracoes() {
@@ -494,63 +497,66 @@ async function salvarConfiguracoes() {
 }
 async function carregarDashboard() {
     const res = await callApi({ action: "get_dashboard" });
-    
+    console.log("Dados recebidos no Dash:", res); // Verifique no F12 se os dados chegaram
+
     if (res.status === "success") {
-        const vendas = res.vendas; 
-        const estoque = res.estoque;
-        const config = res.config;
-        const hoje = new Date().toLocaleDateString('pt-BR');
+        const vendas = res.vendas || []; 
+        const estoque = res.estoque || [];
+        const config = res.config || {};
+        
+        // Formata data de hoje para DD/MM/AAAA
+        const hojeObj = new Date();
+        const hojeStr = hojeObj.toLocaleDateString('pt-BR');
         
         let brutoHoje = 0;
         let lucroMesBruto = 0;
         let rankingProdutos = {};
         let rankingVendedores = {};
 
-        // Criar um mapa de preços de compra para calcular lucro
-        const precosCompra = {};
+        // 1. Mapa de Preços de Compra (Estoque: col 0 = cod, col 3 = preço compra)
+        const mapaCustos = {};
         estoque.forEach(item => {
-            precosCompra[item[0]] = parseFloat(item[3]) || 0; // index 0: cod, index 3: preco compra
+            mapaCustos[String(item[0])] = parseFloat(item[3]) || 0;
         });
 
+        // 2. Processar Vendas (Vendas: col 0=codProd, 2=qtd, 3=total, 4=data, 6=vendedor)
         vendas.forEach(venda => {
-            const codProd = venda[0];
+            const codProd = String(venda[0]);
             const qtd = parseInt(venda[2]) || 0;
-            const valorTotalVenda = parseFloat(venda[3]) || 0;
-            const dataVenda = venda[4];
-            const vendedor = venda[6];
+            const valorVenda = parseFloat(venda[3]) || 0;
+            const dataVenda = String(venda[4]); // Ex: "03/02/2026"
+            const vendedor = venda[6] || "Desconhecido";
             
-            const custoTotal = (precosCompra[codProd] || 0) * qtd;
-            const lucroNestaVenda = valorTotalVenda - custoTotal;
+            const custoUnitario = mapaCustos[codProd] || 0;
+            const lucroVenda = valorVenda - (custoUnitario * qtd);
 
-            // 1. Vendas de Hoje
-            if (dataVenda === hoje) {
-                brutoHoje += valorTotalVenda;
+            // Soma Bruto Hoje
+            if (dataVenda.includes(hojeStr)) {
+                brutoHoje += valorVenda;
             }
 
-            // 2. Lucro Mensal (Simplificado: todas as vendas da tabela)
-            lucroMesBruto += lucroNestaVenda;
+            // Soma Lucro Acumulado
+            lucroMesBruto += lucroVenda;
 
-            // 3. Ranking de Produtos
+            // Rankings
             rankingProdutos[codProd] = (rankingProdutos[codProd] || 0) + qtd;
-
-            // 4. Ranking de Vendedores
-            rankingVendedores[vendedor] = (rankingVendedores[vendedor] || 0) + valorTotalVenda;
+            rankingVendedores[vendedor] = (rankingVendedores[vendedor] || 0) + valorVenda;
         });
 
-        // Subtrair despesas fixas da config no lucro mensal
-        const despesasFixas = (parseFloat(config.agua) || 0) + (parseFloat(config.luz) || 0) + 
-                              (parseFloat(config.aluguel) || 0) + (parseFloat(config.internet) || 0) +
-                              (parseFloat(config.func) || 0) + (parseFloat(config.gerais) || 0);
+        // 3. Subtrair Despesas Fixas da Aba Config
+        const despesas = (parseFloat(config.agua) || 0) + (parseFloat(config.luz) || 0) + 
+                         (parseFloat(config.aluguel) || 0) + (parseFloat(config.internet) || 0) +
+                         (parseFloat(config.func) || 0) + (parseFloat(config.gerais) || 0) +
+                         (parseFloat(config.embalagens) || 0);
         
-        const lucroLiquidoMes = lucroMesBruto - despesasFixas;
+        const lucroLiquidoFinal = lucroMesBruto - despesas;
 
-        // Atualizar a Interface (IDs do HTML)
-        document.getElementById('kpi-vendas-hoje').innerText = `R$ ${brutoHoje.toFixed(2)}`;
-        document.getElementById('kpi-lucro-mes').innerText = `R$ ${lucroLiquidoMes.toFixed(2)}`;
+        // 4. Atualizar Tela
+        document.getElementById('kpi-vendas-hoje').innerText = `R$ ${brutoHoje.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        document.getElementById('kpi-lucro-mes').innerText = `R$ ${lucroLiquidoFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
         
-        // Achar top vendedor
-        const topVendedor = Object.entries(rankingVendedores).sort((a,b) => b[1] - a[1])[0];
-        document.getElementById('kpi-top-vendedor').innerText = topVendedor ? topVendedor[0] : "-";
+        const listaVendedores = Object.entries(rankingVendedores).sort((a,b) => b[1] - a[1]);
+        document.getElementById('kpi-top-vendedor').innerText = listaVendedores.length > 0 ? listaVendedores[0][0] : "-";
 
         // Renderizar Top 10 Produtos
         const listaTop = document.getElementById('top-produtos-list');
@@ -560,8 +566,7 @@ async function carregarDashboard() {
             .slice(0, 10)
             .forEach(([cod, qtd]) => {
                 const li = document.createElement('li');
-                li.style.padding = "5px 0";
-                li.innerHTML = `<span style="color:var(--gold)">${qtd}x</span> - Código: ${cod}`;
+                li.innerHTML = `<b style="color:var(--gold)">${qtd} un</b> - Cód: ${cod}`;
                 listaTop.appendChild(li);
             });
     }
