@@ -1,454 +1,531 @@
-// script.js - Frontend logic
-// Defina a URL do seu Web App do Google Apps Script aqui:
-const API_URL = 'https://script.google.com/macros/s/AKfycbxG5xxM-n-4CePPQ4PRdzyWPLUf3jljyMhdR1o8qOYUbLE5Fp4JaTMp3hPVhxbWIrKsQA/exec';
+// Substitua pela URL gerada ao implantar o Google Apps Script
+const API_URL = "https://script.google.com/macros/s/AKfycby2nG5yjrf8oU8Rn7DNt8s6UP8itOVUmuQNLkdpVx82tB60D_vI0SejU-6Wq6mqemcCyg/exec"; 
 
+// ESTADO GLOBAL
 let currentUser = null;
-let productsCache = [];
-let cart = {};
+let cart = [];
+let allProducts = [];
+let allSales = [];
+let storeData = {};
+let companyLocation = { lat: -5.637721, lon: -35.424134 };
 
-function qs(sel){ return document.querySelector(sel); }
-function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+// --- INICIALIZAÇÃO E UTILITÁRIOS ---
+window.onload = () => {
+    setInterval(updateClock, 1000);
+};
 
-function show(el){ el.classList.remove('hidden'); }
-function hide(el){ el.classList.add('hidden'); }
-
-async function api(action, payload = {}){
-  const body = Object.assign({action}, payload);
-  const res = await fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  return res.json();
+function showLoading(show) {
+    document.getElementById('loading').classList.toggle('hidden', !show);
 }
 
-/* ---------- Auth ---------- */
-qs('#show-register').addEventListener('click', ()=>{ hide(qs('#login-form')); show(qs('#register-form')); });
-qs('#show-login').addEventListener('click', ()=>{ show(qs('#login-form')); hide(qs('#register-form')); });
-
-qs('#btn-login').addEventListener('click', async ()=>{
-  const u = qs('#login-username').value.trim();
-  const p = qs('#login-password').value.trim();
-  if(!u||!p) return showMsg('#auth-msg','Preencha usuário e senha.');
-  show(qs('#auth-spinner'));
-  const r = await api('login',{username:u,password:p});
-  hide(qs('#auth-spinner'));
-  if(r.ok){
-    currentUser = r.user;
-    initApp();
-  } else showMsg('#auth-msg', r.message || 'Erro no login.');
-});
-
-qs('#btn-register').addEventListener('click', async ()=>{
-  const u = qs('#reg-username').value.trim();
-  const p = qs('#reg-password').value.trim();
-  const nome = qs('#reg-nome').value.trim();
-  const cpf = qs('#reg-cpf').value.trim();
-  const tel = qs('#reg-telefone').value.trim();
-  if(!u||!p||!nome) return showMsg('#auth-msg','Preencha os campos obrigatórios.');
-  show(qs('#auth-spinner'));
-  const r = await api('register',{username:u,password:p,nome,cpf,telefone:tel});
-  hide(qs('#auth-spinner'));
-  if(r.ok){
-    showMsg('#auth-msg','Conta criada. Faça login.');
-    show(qs('#login-form')); hide(qs('#register-form'));
-  } else showMsg('#auth-msg', r.message || 'Erro ao criar conta.');
-});
-
-function showMsg(sel, text){
-  const el = qs(sel);
-  el.textContent = text;
-  setTimeout(()=> el.textContent = '', 5000);
+function formatDate(date) {
+    return date.toLocaleDateString('pt-BR');
 }
 
-/* ---------- Init App ---------- */
-function initApp(){
-  hide(qs('#auth'));
-  show(qs('#main'));
-  qs('#hello-name').textContent = currentUser.nome || currentUser.username;
-  qs('#user-welcome').textContent = currentUser.nome || currentUser.username;
-  bindMenu();
-  loadDashboard();
-  startClock();
-  loadProducts();
+function formatCurrency(val) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 }
 
-qs('#logout').addEventListener('click', ()=>{
-  location.reload();
-});
-
-/* ---------- Menu ---------- */
-function bindMenu(){
-  qsa('.menu-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      qsa('.menu-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const view = btn.dataset.view;
-      qsa('.view').forEach(v=>v.classList.add('hidden'));
-      qs('#view-'+view).classList.remove('hidden');
-      if(view === 'dashboard') loadDashboard();
-      if(view === 'vender') loadProducts();
-      if(view === 'estoque') loadEstoque();
-      if(view === 'minha-loja') loadStore();
-    });
-  });
+// --- COMUNICAÇÃO COM API (APPS SCRIPT) ---
+async function apiCall(action, data = {}) {
+    showLoading(true);
+    try {
+        // Devido ao CORS do Apps Script, usamos POST para envio e leitura em alguns casos ou no-cors
+        // mas aqui vamos usar a estrutura de redirecionamento padrão do Apps Script
+        const response = await fetch(API_URL + "?action=" + action, {
+            method: "POST",
+            body: JSON.stringify(data)
+        });
+        const json = await response.json();
+        showLoading(false);
+        return json;
+    } catch (error) {
+        showLoading(false);
+        alert("Erro de conexão: " + error);
+        return null;
+    }
 }
 
-/* ---------- Dashboard ---------- */
-async function loadDashboard(){
-  show(qs('#dashboard-spinner'));
-  const r = await api('getDashboard',{});
-  hide(qs('#dashboard-spinner'));
-  if(!r.ok) return showMsg('#auth-msg','Erro ao carregar dashboard.');
-  qs('#vendas-hoje').textContent = formatMoney(r.totals.today);
-  qs('#vendas-mes').textContent = formatMoney(r.totals.month);
-  qs('#vendas-ano').textContent = formatMoney(r.totals.year);
-  qs('#lucro-mes').textContent = formatMoney(r.lucro.mes);
-  qs('#top-vendedor').textContent = r.topVendedorMes || '—';
-  renderList('#top10-mes', r.top10Mes || []);
-  renderList('#top10-ano', r.top10Ano || []);
+// --- LOGIN & CADASTRO ---
+function toggleLogin(mode) {
+    if(mode === 'signup') {
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('signup-form').classList.remove('hidden');
+    } else {
+        document.getElementById('login-form').classList.remove('hidden');
+        document.getElementById('signup-form').classList.add('hidden');
+    }
 }
 
-function renderList(sel, arr){
-  const el = qs(sel);
-  el.innerHTML = '';
-  (arr||[]).forEach(item=>{
-    const li = document.createElement('li');
-    li.textContent = `${item.codigo} — ${item.quantidade}`;
-    el.appendChild(li);
-  });
+async function fazerLogin() {
+    const user = document.getElementById('login-user').value;
+    const pass = document.getElementById('login-pass').value;
+    
+    if(!user || !pass) return alert("Preencha todos os campos");
+    
+    // Requisição real
+    const res = await apiCall("login", {user, pass});
+    
+    if(res && res.status === 'success') {
+        currentUser = { user: user, name: res.name, pass: pass }; // Salva pass para confirmar ponto
+        document.getElementById('welcome-msg').innerText = "Olá, " + res.name;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        carregarDadosSistema(); // Carrega tudo ao entrar
+        showView('dashboard');
+    } else {
+        alert(res ? res.message : "Erro ao logar");
+    }
 }
 
-qs('#export-dashboard').addEventListener('click', async ()=>{
-  show(qs('#export-spinner'));
-  const r = await api('getDashboard',{});
-  hide(qs('#export-spinner'));
-  if(!r.ok) return showMsg('#auth-msg','Erro ao exportar.');
-  // gerar PDF com jsPDF
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text('PDV MUNDO DO JEANS - Relatório', 14, 20);
-  doc.setFontSize(12);
-  doc.text(`Usuário: ${currentUser.nome || currentUser.username}`, 14, 30);
-  doc.text(`Vendas Hoje: ${formatMoney(r.totals.today)}`, 14, 40);
-  doc.text(`Vendas Mês: ${formatMoney(r.totals.month)}`, 14, 48);
-  doc.text(`Vendas Ano: ${formatMoney(r.totals.year)}`, 14, 56);
-  doc.text(`Lucro Mês: ${formatMoney(r.lucro.mes)}`, 14, 64);
-  doc.save(`relatorio_pdv_${Date.now()}.pdf`);
-});
-
-/* ---------- Produtos / Vender ---------- */
-async function loadProducts(){
-  show(qs('#products-spinner'));
-  const r = await api('getProducts',{});
-  hide(qs('#products-spinner'));
-  if(!r.ok) return showMsg('#auth-msg','Erro ao carregar produtos.');
-  productsCache = r.products || [];
-  renderProducts(productsCache);
-}
-
-function renderProducts(list){
-  const container = qs('#products-list');
-  container.innerHTML = '';
-  list.forEach(p=>{
-    const div = document.createElement('div');
-    div.className = 'product-item';
-    div.innerHTML = `<div><strong>${p['nome do produto'] || p['nome']}</strong><div class="muted">${p['descricao']||''}</div></div><div>R$ ${Number(p['preço de revenda']||p['preco de revenda']||0).toFixed(2)}</div>`;
-    div.addEventListener('click', ()=> addToCart(p));
-    container.appendChild(div);
-  });
-}
-
-function addToCart(product){
-  const code = product['código do produto'] || product['codigo do produto'] || product['codigo'];
-  if(!cart[code]) cart[code] = {product, quantidade:0};
-  cart[code].quantidade += 1;
-  renderCart();
-}
-
-function renderCart(){
-  const el = qs('#cart-list');
-  el.innerHTML = '';
-  Object.keys(cart).forEach(code=>{
-    const item = cart[code];
-    const div = document.createElement('div');
-    div.className = 'product-item';
-    div.innerHTML = `<div>${item.product['nome do produto'] || item.product['nome']} x ${item.quantidade}</div><div><button class="btn" data-code="${code}">-</button> <button class="btn" data-code-add="${code}">+</button></div>`;
-    el.appendChild(div);
-  });
-  qsa('#cart-list .btn').forEach(b=>{
-    b.addEventListener('click', (ev)=>{
-      const code = ev.target.dataset.code;
-      if(code){
-        cart[code].quantidade = Math.max(0, cart[code].quantidade - 1);
-        if(cart[code].quantidade === 0) delete cart[code];
-        renderCart();
-      }
-      const codeAdd = ev.target.dataset.codeAdd;
-      if(codeAdd){
-        cart[codeAdd].quantidade += 1;
-        renderCart();
-      }
-    });
-  });
-}
-
-/* pagamento extra fields */
-qs('#payment-method').addEventListener('change', ()=>{
-  const val = qs('#payment-method').value;
-  const container = qs('#payment-extra');
-  container.innerHTML = '';
-  if(val === 'Crediário'){
-    container.innerHTML = `<input id="crediario-cpf" placeholder="CPF do cliente" /><input id="crediario-tel" placeholder="Telefone do cliente" />`;
-  } else if(val === 'Cartão'){
-    container.innerHTML = `<input id="cartao-parcelas" type="number" placeholder="Número de parcelas" />`;
-  }
-});
-
-qs('#finalize-sale').addEventListener('click', async ()=>{
-  if(Object.keys(cart).length === 0) return showMsg('#auth-msg','Carrinho vazio.');
-  const method = qs('#payment-method').value;
-  let cpf = '', tel = '', parcelas = '';
-  if(method === 'Crediário'){
-    cpf = qs('#crediario-cpf') ? qs('#crediario-cpf').value.trim() : '';
-    tel = qs('#crediario-tel') ? qs('#crediario-tel').value.trim() : '';
-    if(!cpf || !tel) return showMsg('#auth-msg','CPF e telefone são obrigatórios para crediário.');
-  }
-  if(method === 'Cartão'){
-    parcelas = qs('#cartao-parcelas') ? qs('#cartao-parcelas').value.trim() : '';
-    if(!parcelas) return showMsg('#auth-msg','Informe o número de parcelas.');
-  }
-
-  // montar vendas e salvar
-  show(qs('#sale-spinner'));
-  const saleCode = generateCode('V');
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0,10);
-  const timeStr = now.toTimeString().slice(0,8);
-  for(const code in cart){
-    const item = cart[code];
-    const valorUnit = Number(item.product['preço de revenda'] || item.product['preco de revenda'] || 0);
-    const quantidade = item.quantidade;
-    const valorTotal = valorUnit * quantidade;
-    const saleRow = {
-      'codigo do produto': code,
-      'código da venda': saleCode,
-      'quantidade vendida': quantidade,
-      'valor': valorTotal,
-      'data da venda': dateStr,
-      'hora da venda': timeStr,
-      'vendedor no caixa': currentUser.username,
-      'método de pagamento': method === 'Cartão' ? `Crédito - ${parcelas}` : method,
-      'cpf do cliente': cpf,
-      'telefone do cliente': tel
+async function criarConta() {
+    const data = {
+        user: document.getElementById('sign-user').value,
+        pass: document.getElementById('sign-pass').value,
+        name: document.getElementById('sign-name').value,
+        cpf: document.getElementById('sign-cpf').value,
+        phone: document.getElementById('sign-phone').value
     };
-    await api('addSale',{sale: saleRow});
-  }
-  hide(qs('#sale-spinner'));
-  // gerar cupom txt
-  generateReceiptTxt(saleCode, cart, method, cpf, tel);
-  cart = {};
-  renderCart();
-  showMsg('#auth-msg','Venda finalizada e registrada.');
-});
+    if(!data.user || !data.pass) return alert("Campos obrigatórios faltando");
 
-function generateReceiptTxt(saleCode, cartObj, method, cpf, tel){
-  let text = `CUPOM FISCAL - PDV MUNDO DO JEANS\nCÓDIGO VENDA: ${saleCode}\nDATA: ${new Date().toLocaleString()}\n\nITENS:\n`;
-  let total = 0;
-  for(const code in cartObj){
-    const it = cartObj[code];
-    const nome = it.product['nome do produto'] || it.product['nome'];
-    const qtd = it.quantidade;
-    const valorUnit = Number(it.product['preço de revenda'] || it.product['preco de revenda'] || 0);
-    const subtotal = qtd * valorUnit;
-    total += subtotal;
-    text += `${code} | ${nome} | Qtd: ${qtd} | R$ ${valorUnit.toFixed(2)} | Sub: R$ ${subtotal.toFixed(2)}\n`;
-  }
-  text += `\nTOTAL: R$ ${total.toFixed(2)}\nMÉTODO: ${method}\nCPF: ${cpf}\nTELEFONE: ${tel}\n\nObrigado pela preferência!\n`;
-  const blob = new Blob([text], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `cupom_${saleCode}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+    const res = await apiCall("register", data);
+    if(res && res.status === 'success') {
+        alert("Conta criada! Faça login.");
+        toggleLogin('login');
+    } else {
+        alert("Erro: " + (res ? res.message : "Desconhecido"));
+    }
 }
 
-/* Minhas vendas modal */
-qs('#my-sales').addEventListener('click', ()=> show(qs('#modal-sales')));
-qs('#close-sales-modal').addEventListener('click', ()=> hide(qs('#modal-sales')));
-qs('#search-sales').addEventListener('input', debounce(async (e)=>{
-  const q = e.target.value.trim();
-  if(!q) return qs('#sales-results').innerHTML = '';
-  const r = await api('searchSales',{query:q});
-  if(!r.ok) return showMsg('#auth-msg','Erro na busca.');
-  const el = qs('#sales-results');
-  el.innerHTML = '';
-  (r.results||[]).forEach(s=>{
-    const d = document.createElement('div');
-    d.className = 'product-item';
-    d.textContent = `${s['código da venda'] || s['codigo da venda'] || ''} | ${s['codigo do produto'] || s['codigo do produto'] || ''} | R$ ${Number(s['valor']||0).toFixed(2)}`;
-    el.appendChild(d);
-  });
-}, 400));
+function logout() {
+    location.reload();
+}
 
-/* ---------- Estoque ---------- */
-qs('#btn-add-product').addEventListener('click', ()=>{
-  qs('#new-codigo').value = generateCode('P');
-  show(qs('#modal-add-product'));
-});
-qs('#close-add-product').addEventListener('click', ()=> hide(qs('#modal-add-product')));
-qs('#save-product').addEventListener('click', async ()=>{
-  const prod = {
-    'código do produto': qs('#new-codigo').value,
-    'nome do produto': qs('#new-nome').value,
-    'quantidade em estoque': qs('#new-quantidade').value,
-    'preço de compra': qs('#new-preco-compra').value,
-    'preço de revenda': qs('#new-preco-revenda').value,
-    'descrição': qs('#new-descricao').value
-  };
-  show(qs('#add-product-spinner'));
-  const r = await api('addProduct',{product:prod});
-  hide(qs('#add-product-spinner'));
-  if(r.ok){
-    hide(qs('#modal-add-product'));
-    loadEstoque();
-    showMsg('#auth-msg','Produto adicionado.');
-  } else showMsg('#auth-msg','Erro ao adicionar produto.');
-});
+// --- NAVEGAÇÃO E DADOS ---
+function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + viewId).classList.add('active');
+}
 
-async function loadEstoque(){
-  show(qs('#estoque-spinner'));
-  const r = await api('getProducts',{});
-  hide(qs('#estoque-spinner'));
-  if(!r.ok) return showMsg('#auth-msg','Erro ao carregar estoque.');
-  const list = r.products || [];
-  const container = qs('#estoque-list');
-  container.innerHTML = '';
-  // headers
-  const headers = ['código do produto','nome do produto','quantidade em estoque','preço de compra','preço de revenda','descrição'];
-  const headerRow = document.createElement('div');
-  headerRow.className = 'row';
-  headers.forEach(h=>{
-    const c = document.createElement('div'); c.className='cell'; c.textContent = h; headerRow.appendChild(c);
-  });
-  container.appendChild(headerRow);
-  list.forEach(p=>{
-    const row = document.createElement('div'); row.className='row';
-    headers.forEach(h=>{
-      const c = document.createElement('div'); c.className='cell'; c.textContent = p[h] || p[h.replace('ç','c')] || '';
-      row.appendChild(c);
+async function carregarDadosSistema() {
+    const res = await apiCall("getData");
+    if(res && res.status === 'success') {
+        allProducts = res.estoque;
+        allSales = res.vendas;
+        storeData = res.loja[0] || {};
+        
+        renderDashboard();
+        renderEstoque();
+        renderPOSProducts();
+        fillStoreForm();
+    }
+}
+
+// --- DASHBOARD ---
+function renderDashboard() {
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    const hojeStr = hoje.toLocaleDateString();
+
+    let totalHoje = 0, totalMes = 0, totalAno = 0;
+    let lucroMes = 0;
+    let vendasPorUser = {};
+    let produtosQtd = {};
+
+    allSales.forEach(v => {
+        const vDate = new Date(v['data da venda']);
+        const val = parseFloat(v.valor);
+        
+        // Totais
+        if(vDate.toLocaleDateString() === hojeStr) totalHoje += val;
+        if(vDate.getMonth() === mesAtual && vDate.getFullYear() === anoAtual) {
+            totalMes += val;
+            
+            // Lucro: Venda - (Custo * Qtd)
+            // Nota: Simplificação usando custo atual, pois histórico de custo não existe na tabela itens_vendidos
+            const prod = allProducts.find(p => p['código do produto'] == v['codigo do produto']);
+            const custo = prod ? parseFloat(prod['preço de compra']) : 0;
+            lucroMes += val - (custo * parseFloat(v['quantidade vendida']));
+
+            // Top User
+            vendasPorUser[v['vendedor no caixa']] = (vendasPorUser[v['vendedor no caixa']] || 0) + 1;
+        }
+        if(vDate.getFullYear() === anoAtual) totalAno += val;
+
+        // Top Produtos (Geral para simplificar ou filtrar por mês)
+        if(vDate.getMonth() === mesAtual) {
+            produtosQtd[v['codigo do produto']] = (produtosQtd[v['codigo do produto']] || 0) + parseFloat(v['quantidade vendida']);
+        }
     });
-    container.appendChild(row);
-  });
+
+    // Despesas Fixas
+    const despesas = (parseFloat(storeData['valor medio mensal da agua']||0) + 
+                     parseFloat(storeData['valor medio mensal da luz']||0) + 
+                     parseFloat(storeData['valor mensal da internet']||0) + 
+                     parseFloat(storeData['valor do aluguel']||0) + 
+                     parseFloat(storeData['despesas com embalagens']||0) + 
+                     parseFloat(storeData['despesas com funcionarios']||0) + 
+                     parseFloat(storeData['despesas gerais']||0));
+    
+    lucroMes -= despesas;
+
+    // Atualiza DOM
+    document.getElementById('kpi-today').innerText = formatCurrency(totalHoje);
+    document.getElementById('kpi-month').innerText = formatCurrency(totalMes);
+    document.getElementById('kpi-year').innerText = formatCurrency(totalAno);
+    document.getElementById('kpi-profit').innerText = formatCurrency(lucroMes);
+
+    // Top Vendedor
+    let topUser = Object.keys(vendasPorUser).reduce((a, b) => vendasPorUser[a] > vendasPorUser[b] ? a : b, "---");
+    document.getElementById('top-seller').innerText = topUser;
+
+    // Top Produtos
+    const sortedProds = Object.entries(produtosQtd)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    const list = document.getElementById('top-products-list');
+    list.innerHTML = "";
+    sortedProds.forEach(([code, qtd]) => {
+        const p = allProducts.find(x => x['código do produto'] == code);
+        const li = document.createElement('li');
+        li.innerText = `${qtd}x - ${p ? p['nome do produto'] : code}`;
+        list.appendChild(li);
+    });
 }
 
-/* ---------- Ponto ---------- */
-function startClock(){
-  setInterval(()=>{
+async function exportarRelatorioPDF() {
+    showLoading(true);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.setTextColor(212, 175, 55); // Dourado
+    doc.text("RELATÓRIO PDV - MUNDO DO JEANS", 105, 20, null, null, "center");
+    
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 10, 30);
+    doc.text(`Solicitado por: ${currentUser.name}`, 10, 36);
+
+    const kpiToday = document.getElementById('kpi-today').innerText;
+    const kpiMonth = document.getElementById('kpi-month').innerText;
+    const kpiProfit = document.getElementById('kpi-profit').innerText;
+
+    doc.text("Resumo Financeiro:", 10, 50);
+    doc.autoTable({
+        startY: 55,
+        head: [['Hoje', 'Mês', 'Lucro Líquido (Mês)']],
+        body: [[kpiToday, kpiMonth, kpiProfit]],
+        theme: 'grid'
+    });
+
+    doc.save("Relatorio_MundoDoJeans.pdf");
+    showLoading(false);
+}
+
+// --- VENDER / POS ---
+function renderPOSProducts() {
+    const container = document.getElementById('pos-product-list');
+    container.innerHTML = "";
+    allProducts.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'prod-card';
+        div.innerHTML = `
+            <div style="font-weight:bold; color:var(--gold)">${p['nome do produto']}</div>
+            <div style="font-size:0.8em">${p['descrição']}</div>
+            <div style="margin-top:5px">R$ ${p['preço de revenda']}</div>
+        `;
+        div.onclick = () => addToCart(p);
+        container.appendChild(div);
+    });
+}
+
+function filtrarProdutosPOS() {
+    const term = document.getElementById('search-pos').value.toLowerCase();
+    const cards = document.querySelectorAll('.prod-card');
+    cards.forEach(card => {
+        card.style.display = card.innerText.toLowerCase().includes(term) ? 'block' : 'none';
+    });
+}
+
+function addToCart(product) {
+    const existing = cart.find(item => item.prod_id === product['código do produto']);
+    if(existing) {
+        existing.qty++;
+        existing.total = existing.qty * existing.price;
+    } else {
+        cart.push({
+            prod_id: product['código do produto'],
+            name: product['nome do produto'],
+            qty: 1,
+            price: product['preço de revenda'],
+            total: product['preço de revenda']
+        });
+    }
+    updateCartUI();
+}
+
+function updateCartUI() {
+    const container = document.getElementById('cart-items');
+    container.innerHTML = "";
+    let total = 0;
+    cart.forEach((item, index) => {
+        total += item.total;
+        const div = document.createElement('div');
+        div.className = 'cart-item';
+        div.innerHTML = `
+            <span>${item.qty}x ${item.name}</span>
+            <span>R$ ${item.total.toFixed(2)}</span>
+        `;
+        container.appendChild(div);
+    });
+    document.getElementById('cart-total-value').innerText = formatCurrency(total);
+}
+
+function checkPaymentMethod() {
+    const method = document.getElementById('pay-method').value;
+    document.getElementById('credit-details').classList.toggle('hidden', method !== 'Crédito');
+    document.getElementById('crediario-details').classList.toggle('hidden', method !== 'Crediário');
+}
+
+async function finalizarVenda() {
+    if(cart.length === 0) return alert("Carrinho vazio!");
+    
+    const method = document.getElementById('pay-method').value;
+    let payDesc = method;
+    let cpf = "", phone = "";
+
+    if(method === 'Crédito') {
+        const parc = document.getElementById('installments').value;
+        if(!parc) return alert("Informe parcelas");
+        payDesc = `Crédito - ${parc}x`;
+    } else if(method === 'Crediário') {
+        cpf = document.getElementById('client-cpf').value;
+        phone = document.getElementById('client-phone').value;
+        if(!cpf || !phone) return alert("CPF e Telefone obrigatórios para crediário");
+    }
+
+    const saleId = "VND-" + Date.now().toString(36).toUpperCase();
     const now = new Date();
-    qs('#clock').textContent = now.toLocaleTimeString();
-  }, 1000);
+
+    const saleData = {
+        items: cart,
+        sale_id: saleId,
+        date: now.toLocaleDateString('pt-BR'),
+        time: now.toLocaleTimeString('pt-BR'),
+        seller: currentUser.user,
+        payment: payDesc,
+        client_cpf: cpf,
+        client_phone: phone
+    };
+
+    const res = await apiCall("saveSale", saleData);
+    
+    if(res && res.status === 'success') {
+        gerarCupomTXT(saleData, cart, document.getElementById('cart-total-value').innerText);
+        alert("Venda realizada com sucesso!");
+        cart = [];
+        updateCartUI();
+        carregarDadosSistema(); // Atualiza estoque e dashboard
+    } else {
+        alert("Erro ao salvar venda.");
+    }
 }
 
-qs('#btn-punch').addEventListener('click', async ()=>{
-  const tipo = qs('#tipo-ponto').value;
-  show(qs('#punch-spinner'));
-  // obter geolocalização
-  if(!navigator.geolocation){
-    hide(qs('#punch-spinner'));
-    return showMsg('#punch-msg','Geolocalização não suportada.');
-  }
-  navigator.geolocation.getCurrentPosition(async (pos)=>{
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    // pedir senha
-    const senha = prompt('Confirme sua senha para bater o ponto:');
-    if(!senha){ hide(qs('#punch-spinner')); return; }
-    const r = await api('punchClock',{username: currentUser.username, tipo, latitude: lat, longitude: lon, senha});
-    hide(qs('#punch-spinner'));
-    if(r.ok) showMsg('#punch-msg', r.message || 'Ponto batido.');
-    else showMsg('#punch-msg', r.message || 'Erro ao bater ponto.');
-  }, (err)=>{
-    hide(qs('#punch-spinner'));
-    showMsg('#punch-msg','Não foi possível obter localização.');
-  }, {enableHighAccuracy:true, timeout:10000});
-});
-
-/* ---------- Minha loja ---------- */
-qs('#edit-store').addEventListener('click', ()=> {
-  show(qs('#modal-edit-store'));
-});
-qs('#close-edit-store').addEventListener('click', ()=> hide(qs('#modal-edit-store')));
-qs('#save-store').addEventListener('click', async ()=>{
-  const store = {
-    'nome da loja': qs('#store-nome').value,
-    'rua': qs('#store-rua').value,
-    'cidade': qs('#store-cidade').value,
-    'bairro': qs('#store-bairro').value,
-    'numero': qs('#store-numero').value,
-    'cep': qs('#store-cep').value,
-    'valor medio mensal da agua': qs('#store-agua').value,
-    'valor medio mensal da luz': qs('#store-luz').value,
-    'valor mensal da internet': qs('#store-internet').value,
-    'valor do aluguel': qs('#store-aluguel').value,
-    'despesas com embalagens': qs('#store-embalagens').value,
-    'despesas com funcionarios': qs('#store-func').value,
-    'despesas gerais': qs('#store-gerais').value,
-    'latitude': qs('#store-lat').value,
-    'longitude': qs('#store-lon').value
-  };
-  show(qs('#save-store-spinner'));
-  const r = await api('updateStore',{store});
-  hide(qs('#save-store-spinner'));
-  if(r.ok){
-    hide(qs('#modal-edit-store'));
-    loadStore();
-    showMsg('#auth-msg','Dados da loja atualizados.');
-  } else showMsg('#auth-msg','Erro ao salvar dados.');
-});
-
-async function loadStore(){
-  show(qs('#store-spinner'));
-  const r = await api('getStore',{});
-  hide(qs('#store-spinner'));
-  if(!r.ok) return showMsg('#auth-msg','Erro ao carregar dados da loja.');
-  const s = r.store || {};
-  qs('#store-address').innerHTML = `<strong>${s['nome da loja']||''}</strong><div>${s['rua']||''}, ${s['numero']||''} - ${s['bairro']||''} - ${s['cidade']||''} - CEP ${s['cep']||''}</div>`;
-  qs('#store-expenses').innerHTML = `<div>Água: R$ ${Number(s['valor medio mensal da agua']||0).toFixed(2)}</div><div>Luz: R$ ${Number(s['valor medio mensal da luz']||0).toFixed(2)}</div><div>Internet: R$ ${Number(s['valor mensal da internet']||0).toFixed(2)}</div><div>Aluguel: R$ ${Number(s['valor do aluguel']||0).toFixed(2)}</div>`;
-  // preencher modal
-  qs('#store-nome').value = s['nome da loja']||'';
-  qs('#store-rua').value = s['rua']||'';
-  qs('#store-cidade').value = s['cidade']||'';
-  qs('#store-bairro').value = s['bairro']||'';
-  qs('#store-numero').value = s['numero']||'';
-  qs('#store-cep').value = s['cep']||'';
-  qs('#store-agua').value = s['valor medio mensal da agua']||'';
-  qs('#store-luz').value = s['valor medio mensal da luz']||'';
-  qs('#store-internet').value = s['valor mensal da internet']||'';
-  qs('#store-aluguel').value = s['valor do aluguel']||'';
-  qs('#store-embalagens').value = s['despesas com embalagens']||'';
-  qs('#store-func').value = s['despesas com funcionarios']||'';
-  qs('#store-gerais').value = s['despesas gerais']||'';
-  qs('#store-lat').value = s['latitude']||'';
-  qs('#store-lon').value = s['longitude']||'';
+function gerarCupomTXT(data, items, totalStr) {
+    let txt = `MUNDO DO JEANS - CUPOM FISCAL\n`;
+    txt += `--------------------------------\n`;
+    txt += `Venda: ${data.sale_id}\n`;
+    txt += `Data: ${data.date} - Hora: ${data.time}\n`;
+    txt += `Cliente: ${data.client_cpf || 'Não inf.'}\n`;
+    txt += `--------------------------------\n`;
+    items.forEach(i => {
+        txt += `${i.qty}x ${i.name} ... R$ ${i.total.toFixed(2)}\n`;
+    });
+    txt += `--------------------------------\n`;
+    txt += `TOTAL: ${totalStr}\n`;
+    txt += `Pagamento: ${data.payment}\n`;
+    
+    const blob = new Blob([txt], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cupom_${data.sale_id}.txt`;
+    link.click();
 }
 
-/* ---------- Utilitários ---------- */
-function formatMoney(v){
-  return 'R$ ' + Number(v||0).toFixed(2);
+// --- ESTOQUE ---
+function renderEstoque() {
+    const tbody = document.querySelector('#stock-table tbody');
+    tbody.innerHTML = "";
+    allProducts.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${p['código do produto']}</td>
+            <td>${p['nome do produto']}</td>
+            <td>${p['quantidade em estoque']}</td>
+            <td>R$ ${p['preço de compra']}</td>
+            <td>R$ ${p['preço de revenda']}</td>
+            <td>${p['descrição']}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
-function generateCode(prefix){
-  const s = Math.random().toString(36).substring(2,8).toUpperCase();
-  return `${prefix}${s}${Date.now().toString().slice(-4)}`;
+function filtrarEstoque() {
+    const term = document.getElementById('search-stock').value.toLowerCase();
+    const rows = document.querySelectorAll('#stock-table tbody tr');
+    rows.forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none';
+    });
 }
 
-function debounce(fn, wait){
-  let t;
-  return function(...args){
-    clearTimeout(t);
-    t = setTimeout(()=> fn.apply(this,args), wait);
-  };
+function abrirModalProduto() {
+    document.getElementById('modal-produto').classList.remove('hidden');
+    document.getElementById('new-prod-id').value = "PROD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+function fecharModalProduto() { document.getElementById('modal-produto').classList.add('hidden'); }
+
+async function salvarNovoProduto() {
+    const d = {
+        id: document.getElementById('new-prod-id').value,
+        name: document.getElementById('new-prod-name').value,
+        qty: document.getElementById('new-prod-qty').value,
+        buy_price: document.getElementById('new-prod-buy').value,
+        sell_price: document.getElementById('new-prod-sell').value,
+        desc: document.getElementById('new-prod-desc').value
+    };
+    
+    const res = await apiCall("addProduct", d);
+    if(res.status === 'success') {
+        alert("Produto adicionado!");
+        fecharModalProduto();
+        carregarDadosSistema();
+    }
+}
+
+// --- PONTO ---
+function updateClock() {
+    const now = new Date();
+    document.getElementById('digital-clock').innerText = now.toLocaleTimeString();
+    document.getElementById('date-display').innerText = now.toLocaleDateString();
+}
+
+function baterPonto() {
+    if(!navigator.geolocation) return alert("Geolocalização não suportada.");
+    
+    const password = prompt("Confirme sua senha para bater o ponto:");
+    if(password !== currentUser.pass) return alert("Senha incorreta.");
+
+    showLoading(true);
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        
+        // Calcular distância (Haversine simples)
+        const R = 6371e3; // Metros
+        const φ1 = lat * Math.PI/180;
+        const φ2 = companyLocation.lat * Math.PI/180;
+        const Δφ = (companyLocation.lat-lat) * Math.PI/180;
+        const Δλ = (companyLocation.lon-lon) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const dist = R * c;
+
+        if(dist > 150) {
+            showLoading(false);
+            return alert(`Você está a ${Math.round(dist)}m da empresa. Limite é 150m. Ponto negado.`);
+        }
+
+        const now = new Date();
+        const data = {
+            user: currentUser.user,
+            pass: password, // Envia para validar no backend tb
+            type: document.getElementById('ponto-type').value,
+            date: now.toLocaleDateString(),
+            time: now.toLocaleTimeString()
+        };
+
+        const res = await apiCall("savePonto", data);
+        if(res.status === 'success') alert("Ponto batido com sucesso!");
+        else alert("Erro: " + res.message);
+        
+    }, (err) => {
+        showLoading(false);
+        alert("Erro de GPS: " + err.message);
+    });
+}
+
+// --- MINHA LOJA ---
+function fillStoreForm() {
+    if(!storeData) return;
+    document.getElementById('lj-nome').value = storeData['nome da loja'] || '';
+    document.getElementById('lj-rua').value = storeData['rua'] || '';
+    document.getElementById('lj-cidade').value = storeData['cidade'] || '';
+    document.getElementById('lj-bairro').value = storeData['bairro'] || '';
+    document.getElementById('lj-num').value = storeData['numero'] || '';
+    document.getElementById('lj-cep').value = storeData['cep'] || '';
+    
+    document.getElementById('lj-agua').value = storeData['valor medio mensal da agua'] || '';
+    document.getElementById('lj-luz').value = storeData['valor medio mensal da luz'] || '';
+    document.getElementById('lj-net').value = storeData['valor mensal da internet'] || '';
+    document.getElementById('lj-aluguel').value = storeData['valor do aluguel'] || '';
+    document.getElementById('lj-emb').value = storeData['despesas com embalagens'] || '';
+    document.getElementById('lj-func').value = storeData['despesas com funcionarios'] || '';
+    document.getElementById('lj-geral').value = storeData['despesas gerais'] || '';
+}
+
+async function editarLoja() {
+    const data = {
+        nome: document.getElementById('lj-nome').value,
+        rua: document.getElementById('lj-rua').value,
+        cidade: document.getElementById('lj-cidade').value,
+        bairro: document.getElementById('lj-bairro').value,
+        num: document.getElementById('lj-num').value,
+        cep: document.getElementById('lj-cep').value,
+        agua: document.getElementById('lj-agua').value,
+        luz: document.getElementById('lj-luz').value,
+        net: document.getElementById('lj-net').value,
+        aluguel: document.getElementById('lj-aluguel').value,
+        emb: document.getElementById('lj-emb').value,
+        func: document.getElementById('lj-func').value,
+        geral: document.getElementById('lj-geral').value,
+    };
+    
+    const res = await apiCall("updateStore", data);
+    if(res.status === 'success') alert("Dados atualizados!");
+}
+
+// --- HISTÓRICO MINHAS VENDAS ---
+function abrirMinhasVendas() {
+    document.getElementById('modal-vendas').classList.remove('hidden');
+    renderHistoricoVendas();
+}
+function fecharModalVendas() { document.getElementById('modal-vendas').classList.add('hidden'); }
+
+function renderHistoricoVendas() {
+    const tbody = document.querySelector('#sales-history-table tbody');
+    tbody.innerHTML = "";
+    // Filtra últimas 50 vendas ou todas
+    allSales.slice(-50).reverse().forEach(v => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatDate(new Date(v['data da venda']))}</td>
+            <td>${v['cpf do cliente'] || 'Avulso'}</td>
+            <td>${v['codigo do produto']} (x${v['quantidade vendida']})</td>
+            <td>${formatCurrency(v['valor'])}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+function filtrarHistoricoVendas() {
+    const term = document.getElementById('search-sales-hist').value.toLowerCase();
+    const rows = document.querySelectorAll('#sales-history-table tbody tr');
+    rows.forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none';
+    });
 }
