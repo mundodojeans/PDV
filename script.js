@@ -288,6 +288,10 @@ function checkPaymentMethod() {
     const method = document.getElementById('pay-method').value;
     document.getElementById('credit-details').classList.toggle('hidden', method !== 'Crédito');
     document.getElementById('crediario-details').classList.toggle('hidden', method !== 'Crediário');
+    // NOVO: Se escolher Pix, abre a janelinha do QR Code automaticamente
+    if(method === 'Pix') {
+        abrirPix();
+    }
 }
 
 async function finalizarVenda() {
