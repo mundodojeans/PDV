@@ -163,7 +163,7 @@ function abrirPgto() {
     if (metodo === 'Pix') {
         checkPix('Pix');
     }
-} }
+} 
 
 function checkPix(v) {
     const area = document.getElementById('pix-area');
