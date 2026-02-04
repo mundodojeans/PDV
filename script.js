@@ -226,70 +226,78 @@ async function loadDash() {
     if (res.status !== "success") return;
 
     const agora = new Date();
-    // Força a data de hoje no formato DD/MM/AAAA para bater com a planilha
     const dia = String(agora.getDate()).padStart(2, '0');
     const mes = String(agora.getMonth() + 1).padStart(2, '0');
-    const ano = agora.getFullYear();
+    const ano = String(agora.getFullYear());
     const hojeStr = `${dia}/${mes}/${ano}`;
 
-    let vHoje = 0, vMes = 0, vAno = 0, lucroMesTotal = 0;
+    let vHoje = 0, vMes = 0, vAno = 0, lucroMesBruto = 0;
     let rankMes = {}, rankAno = {}, rankVendedores = {};
 
+    // 1. Mapear Custos do Estoque
     const custos = {};
-    res.estoque.forEach(e => custos[String(e[0])] = parseFloat(e[3]) || 0);
+    if (res.estoque) {
+        res.estoque.forEach(e => {
+            custos[String(e[0])] = parseFloat(e[3]) || 0;
+        });
+    }
 
-    res.vendas.forEach(v => {
-        const codProd = String(v[0]);
-        const qtd = parseInt(v[2]) || 0;
-        const valorVenda = parseFloat(v[3]) || 0;
-        const dataV = String(v[4]); // "DD/MM/AAAA"
-        const vendedor = v[6] || "Sistema";
+    // 2. Processar Vendas
+    if (res.vendas) {
+        res.vendas.forEach(v => {
+            const valorVenda = parseFloat(v[3]) || 0;
+            const qtd = parseInt(v[2]) || 0;
+            const cod = String(v[0]);
+            const dataV = String(v[4]); // "DD/MM/AAAA"
+            const vendedor = v[6] || "Sistema";
 
-        // Divide a data para comparar mês e ano
-        const partes = dataV.split('/');
-        const vDia = partes[0];
-        const vMes = partes[1];
-        const vAno = partes[2];
+            const partes = dataV.split('/');
+            const vMes = partes[1];
+            const vAno = partes[2];
 
-        // 1. Vendas Hoje
-        if (dataV === hojeStr) {
-            vHoje += valorVenda;
-        }
+            // Vendas Hoje (Compara String)
+            if (dataV.trim() === hojeStr) {
+                vHoje += valorVenda;
+            }
 
-        // 2. Vendas Mês Atual
-        if (vMes == mes && vAno == ano) {
-            vMes += valorVenda;
-            const custoTotal = (custos[codProd] || 0) * qtd;
-            lucroMesTotal += (valorVenda - custoTotal);
-            rankMes[codProd] = (rankMes[codProd] || 0) + qtd;
-            rankVendedores[vendedor] = (rankVendedores[vendedor] || 0) + valorVenda;
-        }
+            // Vendas Mês e Lucro
+            if (vMes === mes && vAno === ano) {
+                vMes += valorVenda;
+                const custoUnitario = custos[cod] || 0;
+                lucroMesBruto += (valorVenda - (custoUnitario * qtd));
+                rankMes[cod] = (rankMes[cod] || 0) + qtd;
+                rankVendedores[vendedor] = (rankVendedores[vendedor] || 0) + valorVenda;
+            }
 
-        // 3. Vendas Ano Atual
-        if (vAno == ano) {
-            vAno += valorVenda;
-            rankAno[codProd] = (rankAno[codProd] || 0) + qtd;
-        }
-    });
+            // Vendas Ano
+            if (vAno === ano) {
+                vAno += valorVenda;
+                rankAno[cod] = (rankAno[cod] || 0) + qtd;
+            }
+        });
+    }
 
-    // Despesas fixas (vem da aba config.)
+    // 3. Subtrair Despesas
     const c = res.config || {};
     const despesas = (parseFloat(c.agua)||0)+(parseFloat(c.luz)||0)+(parseFloat(c.aluguel)||0)+(parseFloat(c.internet)||0)+(parseFloat(c.func)||0)+(parseFloat(c.gerais)||0);
     
-    // Atualiza a tela
-    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toFixed(2)}`;
-    document.getElementById('dash-mes').innerText = `R$ ${vMes.toFixed(2)}`;
-    document.getElementById('dash-ano').innerText = `R$ ${vAno.toFixed(2)}`;
-    document.getElementById('dash-lucro').innerText = `R$ ${(lucroMesTotal - despesas).toFixed(2)}`;
+    // 4. Exibir na Tela
+    const setTxt = (id, val) => { 
+        const el = document.getElementById(id); 
+        if(el) el.innerText = val; 
+    };
+
+    setTxt('dash-hoje', `R$ ${vHoje.toFixed(2)}`);
+    setTxt('dash-mes', `R$ ${vMes.toFixed(2)}`);
+    setTxt('dash-ano', `R$ ${vAno.toFixed(2)}`);
+    setTxt('dash-lucro', `R$ ${(lucroMesBruto - despesas).toFixed(2)}`);
     
-    // Top Vendedor
     const topV = Object.entries(rankVendedores).sort((a,b) => b[1] - a[1])[0];
-    document.getElementById('dash-vendedor').innerText = topV ? topV[0] : "-";
+    setTxt('dash-vendedor', topV ? topV[0] : "-");
 
     renderRank('top-prod-mes', rankMes);
     renderRank('top-prod-ano', rankAno);
 }
-
 // Garanta que a função abrirPgto existe para o botão funcionar
 function abrirPgto() {
     if (cart.length === 0) {
