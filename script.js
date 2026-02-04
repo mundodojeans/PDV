@@ -184,3 +184,50 @@ function getDist(la1, lo1, la2, lo2) {
     const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+function toggleEditConfig(edit) {
+    document.getElementById('config-view').style.display = edit ? 'none' : 'block';
+    document.getElementById('config-edit').style.display = edit ? 'block' : 'none';
+}
+
+async function loadConf() {
+    const res = await call("get_config");
+    if (res.status === "success" && res.config) {
+        const c = res.config;
+        // Preenche View
+        document.getElementById('v-loja').innerText = c.loja;
+        document.getElementById('v-end').innerText = `${c.rua}, ${c.bairro} - ${c.cidade}`;
+        const totalGastos = (parseFloat(c.agua)||0)+(parseFloat(c.luz)||0)+(parseFloat(c.aluguel)||0)+(parseFloat(c.internet)||0)+(parseFloat(c.func)||0)+(parseFloat(c.gerais)||0);
+        document.getElementById('v-gastos').innerText = totalGastos.toFixed(2);
+
+        // Preenche Inputs para edição
+        document.getElementById('c-loja').value = c.loja;
+        document.getElementById('c-rua').value = c.rua;
+        document.getElementById('c-bairro').value = c.bairro;
+        document.getElementById('c-cidade').value = c.cidade;
+        document.getElementById('c-agua').value = c.agua;
+        document.getElementById('c-luz').value = c.luz;
+        document.getElementById('c-aluguel').value = c.aluguel;
+        document.getElementById('c-internet').value = c.internet;
+        document.getElementById('c-func').value = c.func;
+        document.getElementById('c-gerais').value = c.gerais;
+    }
+}
+
+async function saveConf() {
+    const configData = {
+        loja: document.getElementById('c-loja').value,
+        rua: document.getElementById('c-rua').value,
+        bairro: document.getElementById('c-bairro').value,
+        cidade: document.getElementById('c-cidade').value,
+        agua: document.getElementById('c-agua').value,
+        luz: document.getElementById('c-luz').value,
+        aluguel: document.getElementById('c-aluguel').value,
+        internet: document.getElementById('c-internet').value,
+        func: document.getElementById('c-func').value,
+        gerais: document.getElementById('c-gerais').value
+    };
+    await call("save_config", { configData });
+    alert("Configurações salvas!");
+    toggleEditConfig(false);
+    loadConf();
+}
