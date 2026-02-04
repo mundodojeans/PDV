@@ -578,6 +578,24 @@ function gerarPayloadPix(valor) {
     
     return payload;
 }
+function abrirPix() {
+    const totalRaw = document.getElementById('cart-total-value').innerText;
+    const total = totalRaw.replace('R$', '').replace('.', '').replace(',', '.').trim();
+    
+    if(parseFloat(total) <= 0) return alert("Carrinho vazio!");
+
+    const payload = gerarPayloadPix(total);
+    document.getElementById('pix-copia-cola').value = payload;
+    
+    document.getElementById('qrcode-container').innerHTML = "";
+    new QRCode(document.getElementById("qrcode-container"), {
+        text: payload,
+        width: 180,
+        height: 180
+    });
+
+    document.getElementById('modal-pix').classList.remove('hidden');
+}
 function fecharModalPix() {
     document.getElementById('modal-pix').classList.add('hidden');
 }
