@@ -54,3 +54,8 @@ td { padding: 10px; border-bottom: 1px solid #333; }
     border-bottom: 1px solid #eee;
     padding: 8px 0;
 }
+/* Ajuste para o carrinho sempre ficar em cima no mobile */
+@media (max-width: 768px) {
+    .pdv-container { display: flex; flex-direction: column-reverse !important; }
+    .cart { margin-bottom: 20px; position: sticky; top: 0; z-index: 10; background: var(--white); }
+}
