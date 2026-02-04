@@ -46,30 +46,34 @@
         </nav>
         <main class="content">
             <section id="s-dashboard" class="screen">
-                <h2>Dashboard</h2>
-                <div class="kpi-grid">
-                    <div class="card"><h3>Vendas Hoje</h3><p id="dash-hoje">R$ 0,00</p></div>
-                    <div class="card"><h3>Lucro Líquido</h3><p id="dash-lucro">R$ 0,00</p></div>
-                    <div class="card"><h3>Top Vendedor</h3><p id="dash-vendedor">-</p></div>
-                </div>
-                <h3>Top 10 Produtos (Qtd)</h3>
-                <ul id="top-prod"></ul>
-            </section>
-
-            <section id="s-vender" class="screen" style="display:none">
-                <h2>Venda Agora</h2>
-                <div class="pdv-container">
-                    <div class="catalog"><input type="text" onkeyup="buscaProd(this.value)" placeholder="Buscar..."> <div id="items"></div></div>
-                    <div class="cart">
-    <h3><i class="fas fa-shopping-cart"></i> Carrinho</h3>
-    <div id="cart-list"></div>
-    <div class="cart-footer">
-        <h2 id="total">R$ 0,00</h2>
-        <button id="btn-finalizar" onclick="abrirPgto()" class="gold">Finalizar Venda</button>
+    <h2>Dashboard Geral</h2>
+    <div class="kpi-grid">
+        <div class="card"><h3>Vendas Hoje</h3><p id="dash-hoje">R$ 0,00</p></div>
+        <div class="card"><h3>Vendas Mês</h3><p id="dash-mes">R$ 0,00</p></div>
+        <div class="card"><h3>Vendas Ano</h3><p id="dash-ano">R$ 0,00</p></div>
+        <div class="card" style="border-left-color: #27ae60;"><h3>Lucro Líquido (Mês)</h3><p id="dash-lucro">R$ 0,00</p></div>
+        <div class="card"><h3>Top Vendedor</h3><p id="dash-vendedor">-</p></div>
     </div>
-                </div>
-            </section>
-
+    <div class="form-grid-2">
+        <div><h3>Top 10 Mês (Qtd)</h3><ul id="top-prod-mes"></ul></div>
+        <div><h3>Top 10 Ano (Qtd)</h3><ul id="top-prod-ano"></ul></div>
+    </div>
+</section>
+            <section id="s-vender" class="screen" style="display:none">
+    <h2>Venda Agora</h2>
+    <div class="pdv-container" style="display: flex; flex-direction: column-reverse;"> 
+        <div class="catalog" style="margin-top: 20px;">
+            <input type="text" onkeyup="buscaProd(this.value)" placeholder="Buscar produto..."> 
+            <div id="items"></div>
+        </div>
+        <div class="cart">
+            <h3><i class="fas fa-shopping-cart"></i> Carrinho</h3>
+            <div id="cart-list"></div>
+            <h2 id="total">R$ 0,00</h2>
+            <button id="btn-finalizar" onclick="abrirPgto()" class="gold">Finalizar</button>
+        </div>
+    </div>
+</section>
             <section id="s-estoque" class="screen" style="display:none">
                 <h2>Estoque</h2>
                 <div class="card-form">
@@ -126,14 +130,38 @@
         </main>
     </div>
 
-    <div id="m-pgto" class="modal">
-        <div class="modal-content">
-            <h3>Pagamento</h3>
-            <input type="text" id="cli-cpf" placeholder="CPF Cliente (Crediário)">
-            <select id="metodo" onchange="checkPix(this.value)">
-                <option>Espécie</option><option>Cartão</option><option>Pix</option><option>Crediário</option>
-            </select>
-            <div id="pix-area" style="display:none"><canvas id="qr"></canvas></div>
+    <div class="modal-content">
+    <h3>Pagamento</h3>
+    <select id="metodo" onchange="atualizarInterfacePgto(this.value)">
+        <option>Espécie</option>
+        <option>Pix</option>
+        <option>Cartão de Débito</option>
+        <option>Cartão de Crédito</option>
+        <option>Crediário</option>
+    </select>
+    
+    <div id="area-parcelas" style="display:none">
+        <label>Parcelas:</label>
+        <select id="p-parcelas">
+            <option value="1">1x (À vista)</option>
+            <option value="2">2x</option>
+            <option value="3">3x</option>
+            <option value="4">4x</option>
+            <option value="5">5x</option>
+            <option value="6">6x</option>
+        </select>
+    </div>
+
+    <div id="area-cliente">
+        <input type="text" id="cli-cpf" placeholder="CPF Cliente">
+        <input type="text" id="cli-tel" placeholder="Telefone Cliente">
+    </div>
+
+    <div id="pix-area" style="display:none; text-align:center"><canvas id="qr"></canvas></div>
+    
+    <button onclick="confirmarVenda()">Confirmar e Gerar Cupom</button>
+    <button onclick="document.getElementById('m-pgto').style.display='none'" style="background:#555">Cancelar</button>
+</div>        <div id="pix-area" style="display:none"><canvas id="qr"></canvas></div>
             <button onclick="confirmarVenda()">Confirmar</button>
             <button onclick="document.getElementById('m-pgto').style.display='none'">Cancelar</button>
         </div>
