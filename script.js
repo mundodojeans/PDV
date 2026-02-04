@@ -1,573 +1,153 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyH4yeUzeYME_Fo1CWc3Yamf_-8T7tkMwXMswii-f6PV6tNCW6Wfk5yM37KvvWZz00RSw/exec"; 
-
-// Configuração da Geolocalização da Loja (EXEMPLO - ALTERE PARA OS DADOS REAIS)
-const LOJA_LAT = -5.637711; // Latitude de Ceará-Mirim (Exemplo)
-const LOJA_LNG = -35.424138; // Longitude de Ceará-Mirim (Exemplo)
-const RAIO_PERMITIDO_METROS = 100;
-
-let currentUser = null;
-let products = [];
+const URL = "https://script.google.com/macros/s/AKfycby8E3XNk7nS6GPar-u-kyqL4_33xeBFRGCfsEX11FgqDbwkmi8A3EK57HALJ568eoCjsw/exec";
+let user = null;
+let prods = [];
 let cart = [];
 
-// === INICIALIZAÇÃO ===
-document.addEventListener("DOMContentLoaded", () => {
-    setInterval(() => {
-        const now = new Date();
-        const relogio = document.getElementById("ponto-relogio");
-        if(relogio) relogio.innerText = now.toLocaleTimeString();
-    }, 1000);
-});
+async function call(action, data = {}) {
+    const res = await fetch(URL, { method: "POST", body: JSON.stringify({ action, ...data }) });
+    return res.json();
+}
 
-// === CADASTRO E LOGIN===
-function toggleRegister() {
-    const loginArea = document.getElementById('form-login-area');
-    const regArea = document.getElementById('form-register-area');
-    const msg = document.getElementById('login-msg');
-    
-    msg.innerText = ""; // Limpa mensagens anteriores
-
-    if (loginArea.style.display === 'none') {
-        loginArea.style.display = 'block';
-        regArea.style.display = 'none';
-    } else {
-        loginArea.style.display = 'none';
-        regArea.style.display = 'block';
-    }
+// LOGIN & NAVEGAÇÃO
+function toggleLogin(reg) {
+    document.getElementById('form-login').style.display = reg ? 'none' : 'block';
+    document.getElementById('form-reg').style.display = reg ? 'block' : 'none';
 }
 
 async function fazerLogin() {
-    const user = document.getElementById('login-user').value;
-    const pass = document.getElementById('login-pass').value;
-    const btn = document.querySelector('button');
-    const msg = document.getElementById('login-msg');
-
-    btn.disabled = true;
-    msg.innerText = "Verificando...";
-
-    try {
-        const res = await callApi({ action: "login", user: user, pass: pass });
-        if (res.status === "success") {
-            currentUser = res.userData;
-            document.getElementById('display-user').innerText = currentUser.nome;
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-container').style.display = 'flex';
-            carregarDadosIniciais();
-        } else {
-            msg.innerText = res.message;
-        }
-    } catch (e) {
-        msg.innerText = "Erro de conexão.";
-    }
-    btn.disabled = false;
+    const res = await call("login", { user: document.getElementById('l-user').value, pass: document.getElementById('l-pass').value });
+    if (res.status === "success") {
+        user = res.userData;
+        document.getElementById('u-nome').innerText = user.nome;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        show('dashboard');
+    } else alert(res.message);
 }
 
-async function registrarNovoUsuario() {
-    const nome = document.getElementById('reg-nome').value;
-    const user = document.getElementById('reg-user').value;
-    const pass = document.getElementById('reg-pass').value;
-    const cpf = document.getElementById('reg-cpf').value;
-    const tel = document.getElementById('reg-tel').value;
-    const msg = document.getElementById('login-msg');
-
-    if (!nome || !user || !pass || !cpf) {
-        msg.innerText = "Preencha todos os campos obrigatórios.";
-        msg.style.color = "orange";
-        return;
-    }
-
-    msg.innerText = "Cadastrando...";
-    msg.style.color = "white";
-
-    const userData = {
-        nome: nome,
-        user: user,
-        pass: pass,
-        cpf: cpf,
-        tel: tel
-    };
-
-    try {
-        const res = await callApi({ action: "register_user", userData: userData });
-        
-        if (res.status === "success") {
-            msg.innerText = "Cadastro realizado! Faça login.";
-            msg.style.color = "lime";
-            
-            // Limpa os campos
-            document.getElementById('reg-nome').value = "";
-            document.getElementById('reg-user').value = "";
-            document.getElementById('reg-pass').value = "";
-            document.getElementById('reg-cpf').value = "";
-            document.getElementById('reg-tel').value = "";
-
-            // Volta para a tela de login após 2 segundos
-            setTimeout(() => {
-                toggleRegister();
-                msg.innerText = "";
-            }, 2000);
-        } else {
-            msg.innerText = res.message;
-            msg.style.color = "red";
-        }
-    } catch (e) {
-        msg.innerText = "Erro ao conectar.";
-        msg.style.color = "red";
-    }
-}
-
-
-function logout() {
-    location.reload();
-}
-
-// === NAVEGAÇÃO ===
-showScreen = function(screenId) {
+function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById('screen-' + screenId).style.display = 'block';
+    document.getElementById('s-' + id).style.display = 'block';
+    if (id === 'estoque') loadEstoque();
+    if (id === 'vender') loadPDV();
+    if (id === 'dashboard') loadDash();
+    if (id === 'config') loadConf();
 }
-    if(screenId === 'dashboard') carregarDashboard();
-    if(screenId === 'estoque') carregarEstoqueVisual();
-    if(screenId === 'config') carregarConfiguracoes();
 
-
-
-// === API HELPER ===
-async function callApi(data) {
-    const response = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(data)
+// ESTOQUE
+async function loadEstoque() {
+    const res = await call("get_products");
+    const tb = document.querySelector("#tbl-est tbody");
+    tb.innerHTML = "";
+    prods = res.products;
+    prods.forEach(p => {
+        tb.innerHTML += `<tr><td>${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td><td>R$ ${p[4]}</td></tr>`;
     });
-    return await response.json();
 }
 
-// === PDV / VENDAS ===
-async function carregarDadosIniciais() {
-    const res = await callApi({ action: "get_products" });
-    if(res.status === "success") {
-        products = res.products;
-        renderCatalogo(products);
-    }
+async function addProd() {
+    const p = { codigo: document.getElementById('p-cod').value, nome: document.getElementById('p-nome').value, qtd: document.getElementById('p-qtd').value, pCompra: document.getElementById('p-compra').value, pVenda: document.getElementById('p-venda').value, desc: "" };
+    await call("add_product", { productData: p });
+    loadEstoque();
 }
 
-function renderCatalogo(lista) {
-    const container = document.getElementById('catalog-container');
+// PDV
+function loadPDV() {
+    const container = document.getElementById('items');
     container.innerHTML = "";
-    lista.forEach(p => {
-        const div = document.createElement('div');
-        div.className = "product-item";
-        div.innerHTML = `
-            <div>
-                <strong>${p.nome}</strong><br>
-                <small>Ref: ${p.codigo}</small><br>
-                <span>R$ ${p.preco_revenda}</span>
-            </div>
-            <button onclick="addToCart('${p.codigo}')" style="width:auto; padding:5px 10px;">+</button>
-        `;
-        container.appendChild(div);
+    prods.forEach(p => {
+        container.innerHTML += `<div class="card" onclick="addCart('${p[0]}')" style="margin:5px; cursor:pointer"><b>${p[1]}</b><br>R$ ${p[4]}</div>`;
     });
 }
 
-function filtrarProdutos() {
-    const term = document.getElementById('search-product').value.toLowerCase();
-    const filtered = products.filter(p => p.nome.toLowerCase().includes(term) || String(p.codigo).includes(term));
-    renderCatalogo(filtered);
-}
-
-function addToCart(codigo) {
-    const produto = products.find(p => p.codigo == codigo);
-    const itemInCart = cart.find(i => i.codigo == codigo);
-
-    if (itemInCart) {
-        itemInCart.qtd++;
-        itemInCart.valorTotal = itemInCart.qtd * itemInCart.precoUnitario;
-    } else {
-        cart.push({
-            codigo: produto.codigo,
-            nome: produto.nome,
-            qtd: 1,
-            precoUnitario: produto.preco_revenda,
-            valorTotal: produto.preco_revenda
-        });
-    }
+function addCart(cod) {
+    const p = prods.find(x => x[0] == cod);
+    cart.push({ codigo: p[0], nome: p[1], qtd: 1, valorTotal: p[4] });
     renderCart();
 }
 
 function renderCart() {
-    const list = document.getElementById('cart-items');
-    const totalEl = document.getElementById('cart-total');
+    const list = document.getElementById('cart-list');
     list.innerHTML = "";
-    let total = 0;
-
-    cart.forEach((item, index) => {
-        total += item.valorTotal;
-        const li = document.createElement('li');
-        li.innerHTML = `${item.nome} x${item.qtd} - R$ ${item.valorTotal.toFixed(2)} <span onclick="cart.splice(${index},1);renderCart()" style="color:red;cursor:pointer;">(x)</span>`;
-        list.appendChild(li);
+    let t = 0;
+    cart.forEach((i, idx) => {
+        t += i.valorTotal;
+        list.innerHTML += `<p>${i.nome} - R$ ${i.valorTotal} <button onclick="cart.splice(${idx},1);renderCart()" style="width:auto;padding:2px">x</button></p>`;
     });
-
-    totalEl.innerText = "R$ " + total.toFixed(2);
+    document.getElementById('total').innerText = `R$ ${t.toFixed(2)}`;
 }
 
-// === PAGAMENTO E PIX ===
-function abrirPagamento() {
-    if(cart.length === 0) return alert("Carrinho vazio!");
-    const total = cart.reduce((acc, item) => acc + item.valorTotal, 0);
-    document.getElementById('modal-total-value').innerText = "R$ " + total.toFixed(2);
-    document.getElementById('modal-pagamento').style.display = 'block';
-}
+function abrirPgto() { document.getElementById('m-pgto').style.display = 'block'; }
 
-function fecharModal(id) {
-    document.getElementById(id).style.display = 'none';
-}
-
-function checkMetodo() {
-    const metodo = document.getElementById('pagamento-metodo').value;
-    const credOptions = document.getElementById('credito-options');
-    const pixArea = document.getElementById('pix-area');
-
-    credOptions.style.display = (metodo === 'Crediário' || metodo === 'Cartão Crédito') ? 'block' : 'none';
-    pixArea.style.display = 'none';
-
-    if (metodo === 'Pix') {
-        pixArea.style.display = 'block';
-        gerarPix();
+function checkPix(v) {
+    const area = document.getElementById('pix-area');
+    area.style.display = v === 'Pix' ? 'block' : 'none';
+    if(v === 'Pix') {
+        new QRious({ element: document.getElementById('qr'), value: "00020126360014br.gov.bcb.pix0111849910006825204000053039865404" + document.getElementById('total').innerText.replace('R$ ','') + "5802BR5916Luciana Oliveira6012Ceara-Mirim62070503PDV6304", size: 150 });
     }
-}
-
-function gerarPix() {
-    const total = cart.reduce((acc, item) => acc + item.valorTotal, 0);
-    const orderId = "PED" + Date.now().toString().slice(-6); // ID curto
-    
-    // Geração Simplificada do Payload Pix (Copia e Cola BR Code)
-    // Nota: Para produção crítica, use uma lib robusta de CRC16.
-    // Chave: 84991000682, Nome: Luciana Oliveira, Cidade: Ceara-Mirim
-    const payload = generatePixPayload("84991000682", "Luciana Oliveira", "Ceara-Mirim", total.toFixed(2), orderId);
-    
-    const qr = new QRious({
-        element: document.getElementById('qr-pix'),
-        value: payload,
-        size: 200
-    });
 }
 
 async function confirmarVenda() {
-    const metodo = document.getElementById('pagamento-metodo').value;
-    const cpf = document.getElementById('cli-cpf').value;
-    const tel = document.getElementById('cli-tel').value;
-
-    if ((metodo === 'Crediário' || metodo === 'Pix') && !cpf) {
-        return alert("CPF é obrigatório para este método.");
-    }
-
-    const saleData = {
+    const sale = {
         codigoVenda: "V" + Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
-        vendedor: currentUser.nome,
-        metodo: metodo,
-        cpf: cpf,
-        telefone: tel,
+        vendedor: user.nome,
+        metodo: document.getElementById('metodo').value,
+        cpf: document.getElementById('cli-cpf').value,
         items: cart
     };
-
-    if(confirm("Confirmar a venda?")) {
-        const res = await callApi({ action: "save_sale", saleData: saleData });
-        if(res.status === "success") {
-            alert("Venda realizada com sucesso!");
-            cart = [];
-            renderCart();
-            fecharModal('modal-pagamento');
-            carregarDadosIniciais(); // Atualiza estoque
-        } else {
-            alert("Erro: " + res.message);
-        }
-    }
+    await call("save_sale", { saleData: sale });
+    alert("Venda Salva!");
+    cart = [];
+    renderCart();
+    document.getElementById('m-pgto').style.display = 'none';
+    show('dashboard');
 }
 
-// === PONTO / GEOLOCALIZAÇÃO ===
-function registrarPonto() {
-    if (!navigator.geolocation) return alert("Geolocalização não suportada.");
+// DASHBOARD
+async function loadDash() {
+    const res = await call("get_dashboard");
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    let vHoje = 0, lMes = 0;
+    let rank = {};
+
+    const custos = {};
+    res.estoque.forEach(e => custos[e[0]] = e[3]);
+
+    res.vendas.forEach(v => {
+        if(v[4] === hoje) vHoje += v[3];
+        lMes += (v[3] - (custos[v[0]] * v[2]));
+        rank[v[0]] = (rank[v[0]] || 0) + v[2];
+    });
+
+    document.getElementById('dash-hoje').innerText = `R$ ${vHoje.toFixed(2)}`;
+    document.getElementById('dash-lucro').innerText = `R$ ${lMes.toFixed(2)}`;
     
-    const senha = document.getElementById('ponto-senha').value;
-    if(!senha) return alert("Digite sua senha para confirmar.");
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        // Calculo de distância simples
-        const dist = getDistanceFromLatLonInKm(lat, lng, LOJA_LAT, LOJA_LNG) * 1000; // em metros
-
-        if (dist > RAIO_PERMITIDO_METROS) {
-            document.getElementById('ponto-msg').innerText = `Desculpe, você está a ${Math.round(dist)}m da loja. É necessário estar na empresa.`;
-            document.getElementById('ponto-msg').style.color = "red";
-            return;
-        }
-
-        const pointData = {
-            usuario: currentUser.nome,
-            passConfirm: senha,
-            tipo: document.getElementById('ponto-tipo').value,
-            data: new Date().toLocaleDateString('pt-BR'),
-            hora: new Date().toLocaleTimeString('pt-BR'),
-            lat: lat, 
-            lng: lng
-        };
-
-        const res = await callApi({ action: "clock_in", pointData: pointData });
-        document.getElementById('ponto-msg').innerText = res.message;
-        document.getElementById('ponto-msg').style.color = res.status === "success" ? "lime" : "red";
-
-    }, (err) => {
-        alert("Erro ao obter localização. Permita o acesso ao GPS.");
+    const list = document.getElementById('top-prod');
+    list.innerHTML = "";
+    Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(r => {
+        list.innerHTML += `<li>Cód ${r[0]}: ${r[1]} unidades</li>`;
     });
 }
 
-// Função auxiliar de distância (Haversine)
-function getDistanceFromLatLonInKm(lat1,lon1,lat2,lon2) {
-  var R = 6371; 
-  var dLat = deg2rad(lat2-lat1);  
-  var dLon = deg2rad(lon2-lon1); 
-  var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  return R * c; 
-}
-function deg2rad(deg) { return deg * (Math.PI/180); }
+// PONTO
+setInterval(() => document.getElementById('relogio').innerText = new Date().toLocaleTimeString(), 1000);
 
-// === AUXILIAR PIX (Gerador de String EMV) ===
-function generatePixPayload(key, name, city, amount, txid) {
-    // Formatação básica do padrão EMV QRCPS
-    const format = (id, value) => {
-        const size = value.length.toString().padStart(2, "0");
-        return `${id}${size}${value}`;
-    };
-    
-    // 00-Format, 26-Merchant Acct (00-Gui, 01-Key), 52-Category, 53-Currency, 54-Amount, 58-Country, 59-Name, 60-City, 62-Add. Data (05-TxID), 63-CRC
-    let payload = 
-        format("00", "01") + 
-        format("26", format("00", "br.gov.bcb.pix") + format("01", key)) +
-        format("52", "0000") +
-        format("53", "986") +
-        format("54", amount) +
-        format("58", "BR") +
-        format("59", name) +
-        format("60", city) +
-        format("62", format("05", txid));
-    
-    payload += "6304"; // Adiciona ID do CRC
-
-    // Calcular CRC16 CCITT-FALSE
-    const crc = crc16(payload);
-    return payload + crc;
-}
-
-function crc16(str) {
-    let crc = 0xFFFF;
-    for (let c = 0; c < str.length; c++) {
-        crc ^= str.charCodeAt(c) << 8;
-        for (let i = 0; i < 8; i++) {
-            if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
-            else crc = crc << 1;
-        }
-    }
-    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
-}
-// === GESTÃO DE ESTOQUE ===
-
-// Função para gerar código automático único
-function gerarCodigoAuto() {
-    const code = "PROD" + Date.now().toString().slice(-5) + Math.floor(Math.random() * 99);
-    document.getElementById('prod-cod').value = code;
-}
-
-async function adicionarProduto() {
-    const nome = document.getElementById('prod-nome').value;
-    const cod = document.getElementById('prod-cod').value;
-    const qtd = document.getElementById('prod-qtd').value;
-    const pCompra = document.getElementById('prod-compra').value;
-    const pVenda = document.getElementById('prod-venda').value;
-    const desc = document.getElementById('prod-desc').value;
-
-    if(!nome || !cod || !pVenda) return alert("Preencha pelo menos Nome, Código e Preço de Venda.");
-
-    const productData = {
-        nome: nome,
-        codigo: cod,
-        qtd: qtd || 0,
-        pCompra: pCompra || 0,
-        pVenda: pVenda,
-        desc: desc
-    };
-
-    if(confirm("Cadastrar produto?")) {
-        const res = await callApi({ action: "add_product", productData: productData });
-        if(res.status === "success") {
-            alert("Produto salvo!");
-            // Limpar campos
-            document.getElementById('prod-nome').value = "";
-            document.getElementById('prod-cod').value = "";
-            document.getElementById('prod-qtd').value = "";
-            document.getElementById('prod-compra').value = "";
-            document.getElementById('prod-venda').value = "";
-            document.getElementById('prod-desc').value = "";
-            
-            // Recarregar lista
-            carregarEstoqueVisual(); 
-            carregarDadosIniciais(); // Recarrega para o PDV também
-        } else {
-            alert("Erro: " + res.message);
-        }
-    }
-}
-
-async function carregarEstoqueVisual() {
-    const res = await callApi({ action: "get_products" });
-    const tbody = document.getElementById('estoque-tabela-body');
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    
-    if(res.status === "success" && res.products) {
-        res.products.forEach(p => {
-            const tr = document.createElement('tr');
-            // Usamos os nomes exatos das propriedades que definimos no getProducts do Apps Script
-            tr.innerHTML = `
-                <td style="padding:10px; border-bottom:1px solid #444;">${p.codigo || ''}</td>
-                <td style="padding:10px; border-bottom:1px solid #444;">${p.nome || ''}</td>
-                <td style="padding:10px; border-bottom:1px solid #444; text-align:center;">${p.estoque || 0}</td>
-                <td style="padding:10px; border-bottom:1px solid #444; text-align:right;">R$ ${parseFloat(p.preco_revenda || 0).toFixed(2)}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } else {
-        tbody.innerHTML = "<tr><td colspan='4'>Nenhum produto encontrado ou erro ao carregar.</td></tr>";
-    }
-}
-// === MINHA LOJA / CONFIGURAÇÕES ===
-
-async function carregarConfiguracoes() {
-    const res = await callApi({ action: "get_config" });
-    if(res.status === "success" && res.config) {
-        const c = res.config;
-        document.getElementById('conf-loja').value = c.loja;
-        document.getElementById('conf-rua').value = c.rua;
-        document.getElementById('conf-cidade').value = c.cidade;
-        document.getElementById('conf-bairro').value = c.bairro;
-        document.getElementById('conf-numero').value = c.numero;
-        document.getElementById('conf-cep').value = c.cep;
+function baterPonto() {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const d = getDist(pos.coords.latitude, pos.coords.longitude, -5.637772, -35.424153); // Ajuste Lat/Lng da Loja
+        if(d > 0.2) return alert("Você não está na empresa!");
         
-        document.getElementById('conf-agua').value = c.agua;
-        document.getElementById('conf-luz').value = c.luz;
-        document.getElementById('conf-internet').value = c.internet;
-        document.getElementById('conf-aluguel').value = c.aluguel;
-        document.getElementById('conf-embalagens').value = c.embalagens;
-        document.getElementById('conf-func').value = c.func;
-        document.getElementById('conf-gerais').value = c.gerais;
-    }
+        await call("clock_in", { pointData: { usuario: user.nome, tipo: document.getElementById('pt-tipo').value, hora: new Date().toLocaleTimeString(), data: new Date().toLocaleDateString('pt-BR') }});
+        alert("Ponto Registrado!");
+    });
 }
 
-async function salvarConfiguracoes() {
-    const configData = {
-        loja: document.getElementById('conf-loja').value,
-        rua: document.getElementById('conf-rua').value,
-        cidade: document.getElementById('conf-cidade').value,
-        bairro: document.getElementById('conf-bairro').value,
-        numero: document.getElementById('conf-numero').value,
-        cep: document.getElementById('conf-cep').value,
-        
-        agua: document.getElementById('conf-agua').value,
-        luz: document.getElementById('conf-luz').value,
-        internet: document.getElementById('conf-internet').value,
-        aluguel: document.getElementById('conf-aluguel').value,
-        embalagens: document.getElementById('conf-embalagens').value,
-        func: document.getElementById('conf-func').value,
-        gerais: document.getElementById('conf-gerais').value
-    };
-
-    const msg = document.getElementById('conf-msg');
-    msg.innerText = "Salvando...";
-    
-    const res = await callApi({ action: "save_config", configData: configData });
-    if(res.status === "success") {
-        msg.innerText = "Dados atualizados com sucesso!";
-        msg.style.color = "lime";
-    } else {
-        msg.innerText = "Erro ao salvar.";
-        msg.style.color = "red";
-    }
-}
-async function carregarDashboard() {
-    const res = await callApi({ action: "get_dashboard" });
-    console.log("Dados recebidos no Dash:", res); // Verifique no F12 se os dados chegaram
-
-    if (res.status === "success") {
-        const vendas = res.vendas || []; 
-        const estoque = res.estoque || [];
-        const config = res.config || {};
-        
-        // Formata data de hoje para DD/MM/AAAA
-        const hojeObj = new Date();
-        const hojeStr = hojeObj.toLocaleDateString('pt-BR');
-        
-        let brutoHoje = 0;
-        let lucroMesBruto = 0;
-        let rankingProdutos = {};
-        let rankingVendedores = {};
-
-        // 1. Mapa de Preços de Compra (Estoque: col 0 = cod, col 3 = preço compra)
-        const mapaCustos = {};
-        estoque.forEach(item => {
-            mapaCustos[String(item[0])] = parseFloat(item[3]) || 0;
-        });
-
-        // 2. Processar Vendas (Vendas: col 0=codProd, 2=qtd, 3=total, 4=data, 6=vendedor)
-        vendas.forEach(venda => {
-            const codProd = String(venda[0]);
-            const qtd = parseInt(venda[2]) || 0;
-            const valorVenda = parseFloat(venda[3]) || 0;
-            const dataVenda = String(venda[4]); // Ex: "03/02/2026"
-            const vendedor = venda[6] || "Desconhecido";
-            
-            const custoUnitario = mapaCustos[codProd] || 0;
-            const lucroVenda = valorVenda - (custoUnitario * qtd);
-
-            // Soma Bruto Hoje
-            if (dataVenda.includes(hojeStr)) {
-                brutoHoje += valorVenda;
-            }
-
-            // Soma Lucro Acumulado
-            lucroMesBruto += lucroVenda;
-
-            // Rankings
-            rankingProdutos[codProd] = (rankingProdutos[codProd] || 0) + qtd;
-            rankingVendedores[vendedor] = (rankingVendedores[vendedor] || 0) + valorVenda;
-        });
-
-        // 3. Subtrair Despesas Fixas da Aba Config
-        const despesas = (parseFloat(config.agua) || 0) + (parseFloat(config.luz) || 0) + 
-                         (parseFloat(config.aluguel) || 0) + (parseFloat(config.internet) || 0) +
-                         (parseFloat(config.func) || 0) + (parseFloat(config.gerais) || 0) +
-                         (parseFloat(config.embalagens) || 0);
-        
-        const lucroLiquidoFinal = lucroMesBruto - despesas;
-
-        // 4. Atualizar Tela
-        document.getElementById('kpi-vendas-hoje').innerText = `R$ ${brutoHoje.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        document.getElementById('kpi-lucro-mes').innerText = `R$ ${lucroLiquidoFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        
-        const listaVendedores = Object.entries(rankingVendedores).sort((a,b) => b[1] - a[1]);
-        document.getElementById('kpi-top-vendedor').innerText = listaVendedores.length > 0 ? listaVendedores[0][0] : "-";
-
-        // Renderizar Top 10 Produtos
-        const listaTop = document.getElementById('top-produtos-list');
-        listaTop.innerHTML = "";
-        Object.entries(rankingProdutos)
-            .sort((a,b) => b[1] - a[1])
-            .slice(0, 10)
-            .forEach(([cod, qtd]) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<b style="color:var(--gold)">${qtd} un</b> - Cód: ${cod}`;
-                listaTop.appendChild(li);
-            });
-    }
+function getDist(la1, lo1, la2, lo2) {
+    const R = 6371;
+    const dLa = (la2-la1)*Math.PI/180;
+    const dLo = (lo2-lo1)*Math.PI/180;
+    const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
