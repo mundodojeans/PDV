@@ -136,7 +136,34 @@ function renderCart() {
     });
     document.getElementById('total').innerText = `R$ ${t.toFixed(2)}`;
 }
-function abrirPgto() { document.getElementById('m-pgto').style.display = 'block'; }
+function abrirPgto() {
+    console.log("Tentando abrir pagamento. Carrinho atual:", cart); // Para debug no F12
+    
+    if (cart.length === 0) {
+        alert("O carrinho está vazio!");
+        return;
+    }
+
+    // Garante que o modal apareça antes de qualquer lógica pesada
+    const modal = document.getElementById('m-pgto');
+    if (modal) {
+        modal.style.display = 'block';
+    } else {
+        console.error("Erro: Modal 'm-pgto' não encontrado no HTML!");
+    }
+
+    // Resetar campos do modal para evitar lixo de vendas anteriores
+    const campoCpf = document.getElementById('cli-cpf');
+    const campoTel = document.getElementById('cli-tel');
+    if(campoCpf) campoCpf.value = "";
+    if(campoTel) campoTel.value = "";
+    
+    // Se o método padrão for Pix, gera o QR Code agora
+    const metodo = document.getElementById('metodo').value;
+    if (metodo === 'Pix') {
+        checkPix('Pix');
+    }
+} }
 
 function checkPix(v) {
     const area = document.getElementById('pix-area');
