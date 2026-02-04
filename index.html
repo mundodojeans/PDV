@@ -1,225 +1,218 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PDV Mundo do Jeans</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- jsPDF CDN para exportar PDF (cliente) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mundo do Jeans - PDV</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <div id="app">
-    <!-- Login / Register -->
-    <div id="auth" class="card center">
-      <h1 class="brand">PDV <span class="brand-gold">MUNDO DO JEANS</span></h1>
-      <div id="auth-forms">
-        <div id="login-form" class="form">
-          <input id="login-username" placeholder="Nome de usuário" />
-          <input id="login-password" type="password" placeholder="Senha" />
-          <button id="btn-login" class="btn gold">Entrar</button>
-          <div class="small-link"><a id="show-register">Não tem conta? Crie uma!</a></div>
-        </div>
 
-        <div id="register-form" class="form hidden">
-          <input id="reg-username" placeholder="Nome de usuário" />
-          <input id="reg-password" type="password" placeholder="Senha" />
-          <input id="reg-nome" placeholder="Nome completo" />
-          <input id="reg-cpf" placeholder="CPF" />
-          <input id="reg-telefone" placeholder="Telefone" />
-          <button id="btn-register" class="btn gold">Criar conta</button>
-          <div class="small-link"><a id="show-login">Voltar ao login</a></div>
-        </div>
-      </div>
-      <div id="auth-spinner" class="spinner hidden">⏳</div>
-      <div id="auth-msg" class="msg"></div>
+    <div id="loading" class="hidden">
+        <div class="spinner">⏳</div>
+        <p>Processando...</p>
     </div>
 
-    <!-- Main App -->
-    <div id="main" class="hidden">
-      <aside id="sidebar">
-        <div class="sidebar-header">
-          <h2>PDV</h2>
-          <div class="brand-gold">MUNDO DO JEANS</div>
+    <section id="login-screen">
+        <div class="login-container">
+            <h1 class="gold">MUNDO DO JEANS</h1>
+            <div id="login-form">
+                <input type="text" id="login-user" placeholder="Nome de Usuário">
+                <input type="password" id="login-pass" placeholder="Senha">
+                <button onclick="fazerLogin()">Entrar</button>
+                <p class="switch-msg">Não tem conta? <span onclick="toggleLogin('signup')">Crie uma!</span></p>
+            </div>
+
+            <div id="signup-form" class="hidden">
+                <input type="text" id="sign-user" placeholder="Usuário">
+                <input type="password" id="sign-pass" placeholder="Senha">
+                <input type="text" id="sign-name" placeholder="Nome Completo">
+                <input type="text" id="sign-cpf" placeholder="CPF">
+                <input type="text" id="sign-phone" placeholder="Telefone">
+                <button onclick="criarConta()">Cadastrar</button>
+                <p class="switch-msg">Já tem conta? <span onclick="toggleLogin('login')">Faça Login</span></p>
+            </div>
         </div>
-        <nav>
-          <button class="menu-btn active" data-view="dashboard">Dashboard</button>
-          <button class="menu-btn" data-view="vender">Vender agora</button>
-          <button class="menu-btn" data-view="estoque">Estoque</button>
-          <button class="menu-btn" data-view="ponto">Ponto</button>
-          <button class="menu-btn" data-view="minha-loja">Minha loja</button>
+    </section>
+
+    <section id="app-screen" class="hidden">
+        
+        <nav class="sidebar">
+            <h2 class="gold">PDV JEANS</h2>
+            <div id="welcome-msg">Olá, Usuário</div>
+            <ul>
+                <li onclick="showView('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
+                <li onclick="showView('vender')"><i class="fas fa-shopping-cart"></i> Vender Agora</li>
+                <li onclick="showView('estoque')"><i class="fas fa-boxes"></i> Estoque</li>
+                <li onclick="showView('ponto')"><i class="fas fa-clock"></i> Ponto</li>
+                <li onclick="showView('loja')"><i class="fas fa-store"></i> Minha Loja</li>
+                <li onclick="logout()" style="margin-top:auto; color: red;"><i class="fas fa-sign-out-alt"></i> Sair</li>
+            </ul>
         </nav>
-        <div class="sidebar-footer">
-          <div id="user-welcome">Olá, Usuário</div>
-          <button id="logout" class="btn">Sair</button>
+
+        <main class="content">
+            
+            <div id="view-dashboard" class="view active">
+                <div class="header-flex">
+                    <h1>Dashboard</h1>
+                    <button onclick="exportarRelatorioPDF()" class="btn-gold"><i class="fas fa-file-pdf"></i> Exportar Dados</button>
+                </div>
+                
+                <div class="kpi-grid">
+                    <div class="card"><h3>Vendas Hoje</h3><p id="kpi-today">R$ 0,00</p></div>
+                    <div class="card"><h3>Vendas Mês</h3><p id="kpi-month">R$ 0,00</p></div>
+                    <div class="card"><h3>Vendas Ano</h3><p id="kpi-year">R$ 0,00</p></div>
+                    <div class="card gold-border"><h3>Lucro Líquido (Mês)</h3><p id="kpi-profit">R$ 0,00</p></div>
+                </div>
+
+                <div class="insights-grid">
+                    <div class="card">
+                        <h3>🏆 Top Vendedor (Mês)</h3>
+                        <p id="top-seller">---</p>
+                    </div>
+                    <div class="card full-width">
+                        <h3>📈 Top 10 Produtos (Mês)</h3>
+                        <ul id="top-products-list"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-vender" class="view">
+                <div class="pos-layout">
+                    <div class="product-selection">
+                        <div class="header-flex">
+                            <h1>Catálogo</h1>
+                            <button class="btn-outline" onclick="abrirMinhasVendas()">Minhas Vendas</button>
+                        </div>
+                        <input type="text" id="search-pos" placeholder="Pesquisar produto..." onkeyup="filtrarProdutosPOS()">
+                        <div id="pos-product-list" class="grid-products">
+                            </div>
+                    </div>
+                    <div class="cart-panel">
+                        <h2>Carrinho 🛒</h2>
+                        <div id="cart-items"></div>
+                        <div class="cart-total">Total: <span id="cart-total-value">R$ 0,00</span></div>
+                        
+                        <div class="payment-options">
+                            <label>Pagamento:</label>
+                            <select id="pay-method" onchange="checkPaymentMethod()">
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Pix">Pix</option>
+                                <option value="Débito">Débito</option>
+                                <option value="Crédito">Crédito</option>
+                                <option value="Crediário">Crediário</option>
+                            </select>
+                            
+                            <div id="credit-details" class="hidden">
+                                <input type="number" id="installments" placeholder="Nº Parcelas" min="1">
+                            </div>
+                            <div id="crediario-details" class="hidden">
+                                <input type="text" id="client-cpf" placeholder="CPF do Cliente">
+                                <input type="text" id="client-phone" placeholder="Telefone">
+                            </div>
+                        </div>
+                        <button class="btn-gold full" onclick="finalizarVenda()">FINALIZAR VENDA</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-estoque" class="view">
+                <div class="header-flex">
+                    <h1>Estoque</h1>
+                    <button class="btn-gold" onclick="abrirModalProduto()">+ Novo Produto</button>
+                </div>
+                <input type="text" id="search-stock" placeholder="Pesquisar no estoque..." onkeyup="filtrarEstoque()">
+                <div class="table-container">
+                    <table id="stock-table">
+                        <thead>
+                            <tr>
+                                <th>Cód</th><th>Produto</th><th>Qtd</th><th>Compra</th><th>Venda</th><th>Desc</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-ponto" class="view">
+                <h1>Folha de Ponto</h1>
+                <div class="clock-container">
+                    <div id="digital-clock">00:00:00</div>
+                    <div id="date-display">--/--/----</div>
+                </div>
+                <div class="ponto-controls">
+                    <select id="ponto-type">
+                        <option value="Entrada">Entrada</option>
+                        <option value="Saída Almoço">Saída Almoço</option>
+                        <option value="Volta Almoço">Volta Almoço</option>
+                        <option value="Saída">Saída</option>
+                    </select>
+                    <button class="btn-gold large" onclick="baterPonto()">BATER PONTO</button>
+                </div>
+            </div>
+
+            <div id="view-loja" class="view">
+                <div class="header-flex">
+                    <h1>Minha Loja</h1>
+                    <button class="btn-gold" onclick="editarLoja()">Salvar Alterações</button>
+                </div>
+                <div class="loja-grid">
+                    <div class="card">
+                        <h3>Endereço</h3>
+                        <input type="text" id="lj-nome" placeholder="Nome Loja">
+                        <input type="text" id="lj-rua" placeholder="Rua">
+                        <input type="text" id="lj-num" placeholder="Número">
+                        <input type="text" id="lj-bairro" placeholder="Bairro">
+                        <input type="text" id="lj-cidade" placeholder="Cidade">
+                        <input type="text" id="lj-cep" placeholder="CEP">
+                    </div>
+                    <div class="card">
+                        <h3>Despesas Mensais Fixas</h3>
+                        <label>Água:</label> <input type="number" id="lj-agua">
+                        <label>Luz:</label> <input type="number" id="lj-luz">
+                        <label>Internet:</label> <input type="number" id="lj-net">
+                        <label>Aluguel:</label> <input type="number" id="lj-aluguel">
+                        <label>Embalagens:</label> <input type="number" id="lj-emb">
+                        <label>Funcionários:</label> <input type="number" id="lj-func">
+                        <label>Gerais:</label> <input type="number" id="lj-geral">
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </section>
+
+    <div id="modal-produto" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalProduto()">&times;</span>
+            <h2>Adicionar Produto</h2>
+            <input type="text" id="new-prod-id" readonly placeholder="Código Auto">
+            <input type="text" id="new-prod-name" placeholder="Nome do Produto">
+            <input type="number" id="new-prod-qty" placeholder="Quantidade">
+            <input type="number" id="new-prod-buy" placeholder="Preço Compra">
+            <input type="number" id="new-prod-sell" placeholder="Preço Venda">
+            <input type="text" id="new-prod-desc" placeholder="Descrição">
+            <button class="btn-gold" onclick="salvarNovoProduto()">Salvar</button>
         </div>
-      </aside>
-
-      <main id="content">
-        <!-- Dashboard -->
-        <section id="view-dashboard" class="view">
-          <div class="view-header">
-            <h1>PDV <span class="brand-gold">MUNDO DO JEANS</span></h1>
-            <p id="hello-user">Olá, <span id="hello-name"></span></p>
-          </div>
-          <div id="dashboard-spinner" class="spinner big hidden">⏳</div>
-          <div id="dashboard-content" class="grid">
-            <div class="card stat">
-              <h3>Vendas Hoje</h3>
-              <div id="vendas-hoje" class="big-number">R$ 0,00</div>
-            </div>
-            <div class="card stat">
-              <h3>Vendas Mês</h3>
-              <div id="vendas-mes" class="big-number">R$ 0,00</div>
-            </div>
-            <div class="card stat">
-              <h3>Vendas Ano</h3>
-              <div id="vendas-ano" class="big-number">R$ 0,00</div>
-            </div>
-            <div class="card stat">
-              <h3>Lucro Mês</h3>
-              <div id="lucro-mes" class="big-number">R$ 0,00</div>
-            </div>
-            <div class="card stat">
-              <h3>Top vendedor do mês</h3>
-              <div id="top-vendedor">—</div>
-            </div>
-            <div class="card">
-              <h3>Top 10 produtos (mês)</h3>
-              <ol id="top10-mes"></ol>
-            </div>
-            <div class="card">
-              <h3>Top 10 produtos (ano)</h3>
-              <ol id="top10-ano"></ol>
-            </div>
-            <div class="card">
-              <button id="export-dashboard" class="btn gold">Exportar dados (PDF)</button>
-              <div id="export-spinner" class="spinner hidden">⏳</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Vender agora -->
-        <section id="view-vender" class="view hidden">
-          <div class="split">
-            <div class="left">
-              <div class="toolbar">
-                <input id="search-products" placeholder="Pesquisar produtos..." />
-                <div id="products-spinner" class="spinner hidden">⏳</div>
-              </div>
-              <div id="products-list" class="list"></div>
-            </div>
-            <div class="right">
-              <h3>Carrinho</h3>
-              <div id="cart-list" class="list"></div>
-              <div class="cart-actions">
-                <label>Método de pagamento:
-                  <select id="payment-method">
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Cartão">Cartão</option>
-                    <option value="Crediário">Crediário</option>
-                  </select>
-                </label>
-                <div id="payment-extra"></div>
-                <button id="finalize-sale" class="btn gold">Finalizar venda</button>
-                <button id="my-sales" class="btn">Minhas vendas</button>
-                <div id="sale-spinner" class="spinner hidden">⏳</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Modal: Minhas vendas -->
-          <div id="modal-sales" class="modal hidden">
-            <div class="modal-content">
-              <h3>Pesquisar vendas</h3>
-              <input id="search-sales" placeholder="Pesquisar por cliente, código, CPF, telefone..." />
-              <div id="sales-results" class="list"></div>
-              <button class="btn" id="close-sales-modal">Fechar</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- Estoque -->
-        <section id="view-estoque" class="view hidden">
-          <div class="toolbar">
-            <input id="search-estoque" placeholder="Pesquisar no estoque..." />
-            <button id="btn-add-product" class="btn gold">+ Adicionar produto</button>
-            <div id="estoque-spinner" class="spinner hidden">⏳</div>
-          </div>
-          <div id="estoque-list" class="table"></div>
-
-          <div id="modal-add-product" class="modal hidden">
-            <div class="modal-content">
-              <h3>Adicionar produto</h3>
-              <label>Código <input id="new-codigo" readonly /></label>
-              <label>Nome <input id="new-nome" /></label>
-              <label>Quantidade <input id="new-quantidade" type="number" /></label>
-              <label>Preço de compra <input id="new-preco-compra" type="number" step="0.01" /></label>
-              <label>Preço de revenda <input id="new-preco-revenda" type="number" step="0.01" /></label>
-              <label>Descrição <textarea id="new-descricao"></textarea></label>
-              <button id="save-product" class="btn gold">Salvar</button>
-              <button id="close-add-product" class="btn">Cancelar</button>
-              <div id="add-product-spinner" class="spinner hidden">⏳</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Ponto -->
-        <section id="view-ponto" class="view hidden">
-          <div class="card">
-            <h3>Bater ponto</h3>
-            <div id="clock" class="clock">--:--:--</div>
-            <label>Tipo:
-              <select id="tipo-ponto">
-                <option>Entrada</option>
-                <option>Saída</option>
-                <option>Intervalo</option>
-              </select>
-            </label>
-            <button id="btn-punch" class="btn gold">Bater ponto</button>
-            <div id="punch-spinner" class="spinner hidden">⏳</div>
-            <div id="punch-msg" class="msg"></div>
-          </div>
-        </section>
-
-        <!-- Minha loja -->
-        <section id="view-minha-loja" class="view hidden">
-          <div id="store-spinner" class="spinner hidden">⏳</div>
-          <div class="card">
-            <h3>Informações da loja</h3>
-            <div id="store-address"></div>
-            <div id="store-expenses"></div>
-            <button id="edit-store" class="btn gold">Editar informações</button>
-          </div>
-
-          <div id="modal-edit-store" class="modal hidden">
-            <div class="modal-content">
-              <h3>Editar loja</h3>
-              <label>Nome <input id="store-nome" /></label>
-              <label>Rua <input id="store-rua" /></label>
-              <label>Cidade <input id="store-cidade" /></label>
-              <label>Bairro <input id="store-bairro" /></label>
-              <label>Número <input id="store-numero" /></label>
-              <label>CEP <input id="store-cep" /></label>
-              <label>Valor água <input id="store-agua" type="number" step="0.01" /></label>
-              <label>Valor luz <input id="store-luz" type="number" step="0.01" /></label>
-              <label>Internet <input id="store-internet" type="number" step="0.01" /></label>
-              <label>Aluguel <input id="store-aluguel" type="number" step="0.01" /></label>
-              <label>Despesas embalagens <input id="store-embalagens" type="number" step="0.01" /></label>
-              <label>Despesas funcionários <input id="store-func" type="number" step="0.01" /></label>
-              <label>Despesas gerais <input id="store-gerais" type="number" step="0.01" /></label>
-              <label>Latitude (opcional) <input id="store-lat" /></label>
-              <label>Longitude (opcional) <input id="store-lon" /></label>
-              <button id="save-store" class="btn gold">Salvar</button>
-              <button id="close-edit-store" class="btn">Cancelar</button>
-              <div id="save-store-spinner" class="spinner hidden">⏳</div>
-            </div>
-          </div>
-        </section>
-      </main>
     </div>
-  </div>
+    
+    <div id="modal-vendas" class="modal hidden">
+        <div class="modal-content large">
+            <span class="close" onclick="fecharModalVendas()">&times;</span>
+            <h2>Histórico de Vendas</h2>
+            <input type="text" id="search-sales-hist" placeholder="Filtrar por CPF, Cod, Cliente..." onkeyup="filtrarHistoricoVendas()">
+            <div class="table-container">
+                <table id="sales-history-table">
+                    <thead><tr><th>Data</th><th>Cliente</th><th>Prod</th><th>Total</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
